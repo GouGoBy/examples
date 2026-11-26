@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>boba painting — 手繪感 3D 珍奶</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Three.js v0.170.0 Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --ink: #3b3532;
+      --ink-muted: rgba(59, 53, 50, 0.56);
+      --ink-faint: rgba(59, 53, 50, 0.36);
+      --glass-bg: rgba(255, 252, 248, 0.58);
+      --glass-bg-strong: rgba(255, 252, 248, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.72);
+      --glass-shadow: 0 12px 32px rgba(108, 86, 74, 0.08), 0 2px 6px rgba(108, 86, 74, 0.04);
+      --active-bg: rgba(59, 53, 50, 0.88);
+      --active-ink: #fffcf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fdf4ea;
+      font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #webgl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #webgl-canvas:active {
+      cursor: grabbing;
+    }
+
+    #webgl-canvas.hovering-cup {
+      cursor: pointer;
+    }
+
+    /* Editorial serif title font */
+    .font-editorial {
+      font-family: 'Fraunces', Georgia, serif;
+      letter-spacing: -0.02em;
+    }
+
+    /* Frosted pastel gallery glass */
+    .gallery-glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(145%);
+      -webkit-backdrop-filter: blur(20px) saturate(145%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+    }
+
+    .gallery-panel {
+      background: var(--glass-bg-strong);
+      backdrop-filter: blur(26px) saturate(150%);
+      -webkit-backdrop-filter: blur(26px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+      box-shadow: 0 20px 48px rgba(96, 76, 66, 0.12), 0 2px 8px rgba(96, 76, 66, 0.05);
+      transform-origin: top right;
+      transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                  visibility 0.24s;
+    }
+
+    .gallery-panel.panel-closed {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.96);
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Segmented camera pills & action buttons */
+    .seg-btn {
+      border: none;
+      background: transparent;
+      color: var(--ink-muted);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 7px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .seg-btn:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .seg-btn:active {
+      transform: scale(0.94);
+    }
+
+    .seg-btn.active {
+      background: var(--active-bg);
+      color: var(--active-ink);
+      box-shadow: 0 4px 12px rgba(59, 53, 50, 0.16);
+    }
+
+    .action-btn {
+      border: none;
+      background: rgba(255, 255, 255, 0.45);
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 7px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .action-btn:active {
+      transform: scale(0.92);
+    }
+
+    .action-btn.active {
+      background: var(--active-bg);
+      color: var(--active-ink);
+      box-shadow: 0 4px 12px rgba(59, 53, 50, 0.16);
+    }
+
+    @keyframes shakePop {
+      0%   { transform: scale(1) rotate(0deg); }
+      25%  { transform: scale(0.92) rotate(-5deg); }
+      55%  { transform: scale(1.06) rotate(4deg); }
+      80%  { transform: scale(0.98) rotate(-2deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .shake-pop {
+      animation: shakePop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Hairline Studio Sliders */
+    input[type="range"].hairline-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      background: rgba(59, 53, 50, 0.16);
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].hairline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 2px solid #fffcf8;
+      box-shadow: 0 2px 6px rgba(59, 53, 50, 0.22);
+      transition: transform 0.15s ease;
+    }
+
+    input[type="range"].hairline-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+
+    input[type="range"].hairline-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 2px solid #fffcf8;
+      box-shadow: 0 2px 6px rgba(59, 53, 50, 0.22);
+      cursor: pointer;
+    }
+
+    /* Minimal toggle switch */
+    .studio-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      background: rgba(59, 53, 50, 0.18);
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.2s ease;
+    }
+
+    .studio-switch::after {
+      content: '';
+      position: absolute;
+      top: 2.5px;
+      left: 2.5px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #fffcf8;
+      box-shadow: 0 1px 4px rgba(59, 53, 50, 0.2);
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .studio-switch[aria-checked="true"] {
+      background: var(--ink);
+    }
+
+    .studio-switch[aria-checked="true"]::after {
+      transform: translateX(16px);
+    }
+
+    .micro-hint {
+      transition: opacity 0.8s ease;
+    }
+
+    .micro-hint.faded {
+      opacity: 0.28;
+    }
+
+    .no-scrollbar {
+      scrollbar-width: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .seg-btn, .action-btn {
+        font-size: 11.5px;
+        padding: 6px 10px;
+      }
+      .en-sub {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Full-Viewport 3D Painterly Stage -->
+  <main id="stage">
+    <canvas id="webgl-canvas"></canvas>
+  </main>
+
+  <!-- Top-Left Minimal Editorial Title Block -->
+  <header class="fixed top-5 left-5 sm:top-7 sm:left-8 z-20 pointer-events-none select-none">
+    <div class="flex items-baseline gap-2.5">
+      <h1 class="font-editorial text-[22px] sm:text-[26px] font-medium text-[#3b3532] leading-none">
+        boba painting
+      </h1>
+      <span class="text-[11px] font-medium tracking-wide text-[#3b3532]/65 bg-white/50 backdrop-blur-md border border-white/75 rounded-full px-2.5 py-0.5">
+        手繪感 3D 珍奶
+      </span>
+    </div>
+    <p class="mt-1.5 text-[11px] tracking-[0.02em] text-[#3b3532]/50 font-normal">
+      Three.js · Hand-Painted Normals · Painterly Post-Processing
+    </p>
+  </header>
+
+  <!-- Top-Right Shader Studio Toggle & Compact Floating Panel -->
+  <aside class="fixed top-5 right-5 sm:top-7 sm:right-8 z-30 flex flex-col items-end">
+    <button
+      id="btnStudioToggle"
+      class="gallery-glass w-10 h-10 rounded-full flex items-center justify-center text-[#3b3532] hover:bg-white/80 active:scale-95 transition-all cursor-pointer"
+      title="Shader Studio"
+      aria-label="開啟 Shader Studio 調整面板"
+      aria-expanded="false"
+    >
+      <!-- Minimalist Sliders SVG Icon -->
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="20" y2="6"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="18" x2="20" y2="18"></line>
+        <circle cx="9" cy="6" r="2.2" fill="#fffcf8"></circle>
+        <circle cx="15" cy="12" r="2.2" fill="#fffcf8"></circle>
+        <circle cx="10" cy="18" r="2.2" fill="#fffcf8"></circle>
+      </svg>
+    </button>
+
+    <!-- Floating Shader Studio Glass Panel (Closed by Default) -->
+    <div id="studioPanel" class="gallery-panel panel-closed mt-2.5 w-[268px] rounded-2xl p-4">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#3b3532]/10">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#3b3532]/70">
+          Shader Studio
+        </span>
+        <span class="text-[10.5px] text-[#3b3532]/45">Realtime</span>
+      </div>
+
+      <div class="space-y-3.5">
+        <!-- Slider 1: Brush Strokes -->
+        <div>
+          <div class="flex items-center justify-between text-[11.5px] mb-1.5">
+            <span class="text-[#3b3532]/85 font-medium">筆觸強度 <span class="text-[#3b3532]/45 font-normal">Brush Strokes</span></span>
+            <span id="valBrush" class="text-[#3b3532]/60 tabular-nums text-[11px]">78%</span>
+          </div>
+          <input id="sliderBrush" class="hairline-slider" type="range" min="0" max="100" value="78" />
+        </div>
+
+        <!-- Slider 2: Painted Normals -->
+        <div>
+          <div class="flex items-center justify-between text-[11.5px] mb-1.5">
+            <span class="text-[#3b3532]/85 font-medium">手繪法線 <span class="text-[#3b3532]/45 font-normal">Painted Normals</span></span>
+            <span id="valNormals" class="text-[#3b3532]/60 tabular-nums text-[11px]">75%</span>
+          </div>
+          <input id="sliderNormals" class="hairline-slider" type="range" min="0" max="100" value="75" />
+        </div>
+
+        <!-- Slider 3: Soft-Body Wobble -->
+        <div>
+          <div class="flex items-center justify-between text-[11.5px] mb-1.5">
+            <span class="text-[#3b3532]/85 font-medium">果凍彈性 <span class="text-[#3b3532]/45 font-normal">Soft-Body Wobble</span></span>
+            <span id="valWobble" class="text-[#3b3532]/60 tabular-nums text-[11px]">80%</span>
+          </div>
+          <input id="sliderWobble" class="hairline-slider" type="range" min="0" max="100" value="80" />
+        </div>
+
+        <!-- Slider 4: Fixed Dither Grain -->
+        <div>
+          <div class="flex items-center justify-between text-[11.5px] mb-1.5">
+            <span class="text-[#3b3532]/85 font-medium">固定顆粒 <span class="text-[#3b3532]/45 font-normal">Fixed Dither Grain</span></span>
+            <span id="valDither" class="text-[#3b3532]/60 tabular-nums text-[11px]">55%</span>
+          </div>
+          <input id="sliderDither" class="hairline-slider" type="range" min="0" max="100" value="55" />
+        </div>
+
+        <!-- Master Painterly Pass Toggle -->
+        <div class="pt-3 mt-1 border-t border-[#3b3532]/10 flex items-center justify-between">
+          <div>
+            <div class="text-[12px] font-medium text-[#3b3532]/85">Painterly Pass</div>
+            <div class="text-[10.5px] text-[#3b3532]/45">壓克力濾鏡</div>
+          </div>
+          <button id="switchPainterly" class="studio-switch" role="switch" aria-checked="true" aria-label="切換壓克力後製濾鏡"></button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom-Center Airy Frosted Control Bar -->
+  <nav class="fixed bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-20 max-w-[calc(100vw-24px)]">
+    <div class="gallery-glass no-scrollbar rounded-full px-2 py-1.5 flex items-center gap-1 overflow-x-auto">
+      <!-- Camera Focus Segmented Pills -->
+      <div class="flex items-center gap-0.5 flex-shrink-0" role="tablist" aria-label="視角切換">
+        <button class="seg-btn active" data-focus="both" role="tab" aria-selected="true">
+          <span>雙杯</span><span class="en-sub opacity-65">Both</span>
+        </button>
+        <button class="seg-btn" data-focus="left" role="tab" aria-selected="false">
+          <span>黑糖波霸</span><span class="en-sub opacity-65">Brown Sugar</span>
+        </button>
+        <button class="seg-btn" data-focus="right" role="tab" aria-selected="false">
+          <span>抹茶布丁</span><span class="en-sub opacity-65">Matcha</span>
+        </button>
+      </div>
+
+      <!-- Hairline Vertical Divider -->
+      <div class="w-px h-5 bg-[#3b3532]/14 mx-1 flex-shrink-0"></div>
+
+      <!-- Shake Action -->
+      <button id="btnShake" class="action-btn flex-shrink-0" title="輕搖雙杯觸發果凍彈性">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"></path>
+          <path d="M5 7c1.5-2 3-2 4.5 0"></path>
+          <path d="M14.5 17c1.5 2 3 2 4.5 0"></path>
+        </svg>
+        <span>搖晃</span><span class="en-sub opacity-65">Shake</span>
+      </button>
+
+      <!-- Painterly Quick Toggle -->
+      <button id="btnPainterlyQuick" class="action-btn active flex-shrink-0" title="切換手繪壓克力濾鏡">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.37 2.63a2.12 2.12 0 0 1 3 3L14 13l-4 1 1-4 7.37-7.37z"></path>
+          <path d="M9 14.5A3.5 3.5 0 0 0 5.5 18c0 1.2-.5 2-1.5 2.5 1.8.8 4.8.6 6.5-1.2a3.5 3.5 0 0 0-1.5-4.8z"></path>
+        </svg>
+        <span>濾鏡</span><span class="en-sub opacity-65">Painterly</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Subtle Bottom-Right Micro-Hint -->
+  <div id="microHint" class="micro-hint fixed bottom-6 right-8 z-10 hidden lg:block pointer-events-none text-[11px] tracking-wide text-[#3b3532]/42">
+    拖曳旋轉視角 · 滾輪縮放 · 點擊杯身戳動果凍
+  </div>
+
+  <!-- WebGL Fallback Message Box (never uses alert) -->
+  <div id="errorBox" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[#fdf4ea]/95 p-6">
+    <div class="gallery-panel rounded-3xl max-w-md w-full p-7 text-center">
+      <h2 class="font-editorial text-xl text-[#3b3532] mb-2">WebGL Unavailable</h2>
+      <p id="errorMsg" class="text-xs leading-relaxed text-[#3b3532]/65">
+        無法初始化 3D WebGL 渲染環境，請確認瀏覽器已開啟硬體加速後重新整理頁面。
+      </p>
+    </div>
+  </div>
+
+  <!-- Main 3D Painterly Application -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+    // =========================================================================
+    // 1. GLOBAL CONFIGURATION & SHADER STUDIO STATE
+    // =========================================================================
+    const state = {
+      brushStrength: 0.78,
+      normalStrength: 0.75,
+      wobbleStrength: 0.80,
+      ditherStrength: 0.55,
+      painterlyEnabled: true,
+      focusMode: 'both',
+      hasInteracted: false,
+    };
+
+    const canvas = document.getElementById('webgl-canvas');
+    const microHint = document.getElementById('microHint');
+
+    function showFallbackError(msg) {
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorBox').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // 2. RENDERER, SCENE, CAMERA & LIGHTING (Sunlit MaoMomiji / Frutiger Aero)
+    // =========================================================================
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: 'high-performance',
+      });
+    } catch (e) {
+      showFallbackError('初始化 WebGL 渲染器失敗：' + e.message);
+      throw e;
+    }
+
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.07;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xfcf1e8);
+    scene.fog = new THREE.FogExp2(0xf7eee8, 0.018);
+
+    const camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.1, 80);
+    camera.position.set(0, 2.35, 7.2);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.set(0, 1.28, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.065;
+    controls.enablePan = false;
+    controls.minDistance = 3.2;
+    controls.maxDistance = 11.0;
+    controls.minPolarAngle = Math.PI * 0.14;
+    controls.maxPolarAngle = Math.PI * 0.485; // Prevents clipping under tabletop
+    controls.update();
+
+    // Bright studio environment reflection for crisp acrylic/glass speculars
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    const envRT = pmrem.fromScene(new RoomEnvironment(), 0.035);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.92;
+    pmrem.dispose();
+
+    // Sunlit food-illustration light rig (warm sun key + sky fill + luminous rim)
+    const hemiLight = new THREE.HemisphereLight(0xeef8ff, 0xffe6d4, 0.92);
+    scene.add(hemiLight);
+
+    const sunKey = new THREE.DirectionalLight(0xfff6e5, 2.15);
+    sunKey.position.set(-4.6, 7.6, 5.4);
+    sunKey.castShadow = true;
+    sunKey.shadow.mapSize.set(2048, 2048);
+    sunKey.shadow.camera.near = 1.5;
+    sunKey.shadow.camera.far = 20;
+    sunKey.shadow.camera.left = -4.5;
+    sunKey.shadow.camera.right = 4.5;
+    sunKey.shadow.camera.top = 4.5;
+    sunKey.shadow.camera.bottom = -4.5;
+    sunKey.shadow.bias = -0.0005;
+    sunKey.shadow.normalBias = 0.015;
+    sunKey.shadow.radius = 4.2;
+    scene.add(sunKey);
+
+    // Cool sky-blue fill so shadow sides tint dreamy pastel lavender-blue
+    const skyFill = new THREE.DirectionalLight(0xbce6ff, 1.15);
+    skyFill.position.set(5.2, 3.6, 2.6);
+    scene.add(skyFill);
+
+    // Bright glossy back-rim light for appetizing translucent boba & glass edges
+    const rimLight = new THREE.DirectionalLight(0xfff1dc, 1.65);
+    rimLight.position.set(1.8, 5.2, -5.8);
+    scene.add(rimLight);
+
+    // Subtle warm upward bounce under the cups
+    const warmBounce = new THREE.PointLight(0xffd2a6, 0.9, 8.0, 1.8);
+    warmBounce.position.set(0, 0.55, 1.7);
+    scene.add(warmBounce);
+
+    // =========================================================================
+    // 3. PROCEDURAL HAND-PAINTED NORMAL, ROUGHNESS & PAINTERLY TEXTURES
+    // =========================================================================
+    // Deterministic PRNG for consistent artisanal brush layout
+    function mulberry32(seed) {
+      return function () {
+        let t = (seed += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /**
+     * Generates a seamless-feeling acrylic impasto brushstroke heightfield,
+     * then derives a tangent-space RGB normal map and matching roughness map.
+     */
+    function createHandPaintedMaps(size = 512, seed = 42) {
+      const rand = mulberry32(seed);
+      const hCanvas = document.createElement('canvas');
+      hCanvas.width = size;
+      hCanvas.height = size;
+      const ctx = hCanvas.getContext('2d');
+
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw hundreds of overlapping directional acrylic brush dabs with bristle ridges
+      const strokeCount = 720;
+      for (let i = 0; i < strokeCount; i++) {
+        const cx = rand() * size;
+        const cy = rand() * size;
+        const len = 28 + rand() * 68;
+        const wid = 8 + rand() * 20;
+        const angle = (rand() - 0.5) * 0.85 + (i % 5 === 0 ? Math.PI * 0.45 : 0);
+        const lum = Math.floor(85 + rand() * 125);
+
+        // Wrap around edges for seamless tiling
+        for (let ox = -1; ox <= 1; ox++) {
+          for (let oy = -1; oy <= 1; oy++) {
+            const px = cx + ox * size;
+            const py = cy + oy * size;
+            if (px < -len || px > size + len || py < -len || py > size + len) continue;
+
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(angle);
+
+            // Soft paint mound body
+            const grad = ctx.createLinearGradient(-len * 0.5, 0, len * 0.5, 0);
+            grad.addColorStop(0.0, `rgba(${lum},${lum},${lum},0.0)`);
+            grad.addColorStop(0.22, `rgba(${lum},${lum},${lum},0.32)`);
+            grad.addColorStop(0.78, `rgba(${lum},${lum},${lum},0.36)`);
+            grad.addColorStop(1.0, `rgba(${lum},${lum},${lum},0.0)`);
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, len * 0.5, wid * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fine acrylic bristle grooves inside each stroke
+            const bristles = 4 + Math.floor(rand() * 4);
+            ctx.lineWidth = 1.1;
+            for (let b = 0; b < bristles; b++) {
+              const by = ((b / (bristles - 1)) - 0.5) * wid * 0.72;
+              const bLum = Math.min(255, Math.max(0, lum + (b % 2 === 0 ? 34 : -28)));
+              ctx.strokeStyle = `rgba(${bLum},${bLum},${bLum},0.28)`;
+              ctx.beginPath();
+              ctx.moveTo(-len * 0.42, by);
+              ctx.quadraticCurveTo(0, by + (rand() - 0.5) * 2.5, len * 0.42, by);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        }
+      }
+
+      const hData = ctx.getImageData(0, 0, size, size).data;
+
+      // Convert heightfield to tangent-space Normal Map + Roughness Map
+      const nCanvas = document.createElement('canvas');
+      nCanvas.width = size;
+      nCanvas.height = size;
+      const nCtx = nCanvas.getContext('2d');
+      const nImg = nCtx.createImageData(size, size);
+
+      const rCanvas = document.createElement('canvas');
+      rCanvas.width = size;
+      rCanvas.height = size;
+      const rCtx = rCanvas.getContext('2d');
+      const rImg = rCtx.createImageData(size, size);
+
+      const getH = (x, y) => {
+        const wx = (x + size) % size;
+        const wy = (y + size) % size;
+        return hData[(wy * size + wx) * 4] / 255.0;
+      };
+
+      const bumpScale = 3.2;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const hL = getH(x - 1, y);
+          const hR = getH(x + 1, y);
+          const hU = getH(x, y - 1);
+          const hD = getH(x, y + 1);
+          const hC = getH(x, y);
+
+          let dx = (hL - hR) * bumpScale;
+          let dy = (hU - hD) * bumpScale;
+          let dz = 1.0;
+          const invLen = 1.0 / Math.hypot(dx, dy, dz);
+          dx *= invLen;
+          dy *= invLen;
+          dz *= invLen;
+
+          const idx = (y * size + x) * 4;
+          nImg.data[idx]     = Math.round((dx * 0.5 + 0.5) * 255);
+          nImg.data[idx + 1] = Math.round((dy * 0.5 + 0.5) * 255);
+          nImg.data[idx + 2] = Math.round((dz * 0.5 + 0.5) * 255);
+          nImg.data[idx + 3] = 255;
+
+          // Paint ridges catch crisper speculars (lower roughness), troughs stay softer
+          const rough = Math.round((0.52 - (hC - 0.5) * 0.34) * 255);
+          rImg.data[idx] = rImg.data[idx + 1] = rImg.data[idx + 2] = Math.max(30, Math.min(240, rough));
+          rImg.data[idx + 3] = 255;
+        }
+      }
+
+      nCtx.putImageData(nImg, 0, 0);
+      rCtx.putImageData(rImg, 0, 0);
+
+      const normalMap = new THREE.CanvasTexture(nCanvas);
+      normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+      normalMap.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+      const roughnessMap = new THREE.CanvasTexture(rCanvas);
+      roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+      roughnessMap.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+      return { normalMap, roughnessMap };
+    }
+
+    /**
+     * Generates a hand-painted layered liquid color texture with soft acrylic swirls.
+     */
+    function createLayeredLiquidTexture(stops, swirlColor, seed = 101) {
+      const rand = mulberry32(seed);
+      const w = 512, h = 512;
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, h, 0, 0);
+      for (const [pos, col] of stops) {
+        grad.addColorStop(pos, col);
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Soft horizontal painterly marbling & creamy acrylic clouds
+      for (let i = 0; i < 140; i++) {
+        const x = rand() * w;
+        const y = rand() * h;
+        const rw = 40 + rand() * 140;
+        const rh = 6 + rand() * 24;
+        const alpha = 0.04 + rand() * 0.09;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rand() - 0.5) * 0.28);
+        ctx.fillStyle = swirlColor.replace('ALPHA', alpha.toFixed(3));
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rw, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      return tex;
+    }
+
+    /**
+     * Generates an organic dripping caramelized brown sugar tiger-stripe texture
+     * clinging to the inner glass cup wall.
+     */
+    function createBrownSugarTigerTexture(seed = 202) {
+      const rand = mulberry32(seed);
+      const w = 1024, h = 512;
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+
+      // Organic swirling syrup ribbons wrapping seamlessly around the cylinder
+      const ribbonCount = 16;
+      for (let i = 0; i < ribbonCount; i++) {
+        const startX = (i / ribbonCount) * w + (rand() - 0.5) * 38;
+        const startY = h * (0.16 + rand() * 0.34);
+        const endY = h * (0.58 + rand() * 0.36);
+        const thickness = 14 + rand() * 26;
+
+        for (let wrap = -1; wrap <= 1; wrap++) {
+          ctx.save();
+          ctx.beginPath();
+          let px = startX + wrap * w;
+          let py = startY;
+          ctx.moveTo(px, py);
+
+          const segs = 5;
+          for (let s = 1; s <= segs; s++) {
+            const t = s / segs;
+            const nx = startX + wrap * w + Math.sin(t * Math.PI * 2.1 + i * 1.4) * (35 + rand() * 24);
+            const ny = startY + (endY - startY) * t;
+            ctx.quadraticCurveTo(px + (nx - px) * 0.5, py + (ny - py) * 0.4, nx, ny);
+            px = nx;
+            py = ny;
+          }
+
+          const g = ctx.createLinearGradient(0, startY, 0, endY);
+          g.addColorStop(0, 'rgba(98, 40, 12, 0.0)');
+          g.addColorStop(0.22, 'rgba(94, 36, 10, 0.82)');
+          g.addColorStop(0.65, 'rgba(66, 22, 6, 0.90)');
+          g.addColorStop(1, 'rgba(130, 58, 18, 0.25)');
+
+          ctx.strokeStyle = g;
+          ctx.lineWidth = thickness;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+
+          // Translucent amber caramel halo edge
+          ctx.strokeStyle = 'rgba(186, 98, 34, 0.26)';
+          ctx.lineWidth = thickness + 10;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // Bottom rich syrup pool band
+      const basePool = ctx.createLinearGradient(0, h * 0.72, 0, h);
+      basePool.addColorStop(0, 'rgba(92, 34, 8, 0.0)');
+      basePool.addColorStop(0.55, 'rgba(72, 24, 6, 0.55)');
+      basePool.addColorStop(1, 'rgba(54, 16, 4, 0.86)');
+      ctx.fillStyle = basePool;
+      ctx.fillRect(0, h * 0.72, w, h * 0.28);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      return tex;
+    }
+
+    const paintedMaps = createHandPaintedMaps(512, 77);
+    const paintedNormalMats = []; // Track all materials using painted normal map for live slider control
+
+    function registerPaintedMaterial(mat, baseScale = 0.48) {
+      mat.normalMap = paintedMaps.normalMap;
+      mat.normalScale = new THREE.Vector2(baseScale * state.normalStrength, baseScale * state.normalStrength);
+      mat.userData.baseNormalScale = baseScale;
+      paintedNormalMats.push(mat);
+      return mat;
+    }
+
+    // =========================================================================
+    // 4. DREAMY PASTEL SKY DOME, MATTE TABLETOP & DAPPLED SUNLIT CAUSTICS
+    // =========================================================================
+    // Radial sunlit pastel backdrop (cream-peach -> blush -> Frutiger Aero sky-mint)
+    const skyGeo = new THREE.SphereGeometry(38, 36, 24);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      uniforms: {
+        uColorBottom: { value: new THREE.Color(0xfff1e4) },
+        uColorMid:    { value: new THREE.Color(0xfff4eb) },
+        uColorTop:    { value: new THREE.Color(0xd7f2f7) },
+        uSunColor:    { value: new THREE.Color(0xfffbe8) },
+        uSunDir:      { value: new THREE.Vector3(-0.52, 0.62, 0.58).normalize() },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vWorldDir;
+        void main() {
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldDir = normalize(wp.xyz);
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uColorBottom;
+        uniform vec3 uColorMid;
+        uniform vec3 uColorTop;
+        uniform vec3 uSunColor;
+        uniform vec3 uSunDir;
+        varying vec3 vWorldDir;
+
+        void main() {
+          float h = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
+          vec3 col = mix(uColorBottom, uColorMid, smoothstep(0.35, 0.56, h));
+          col = mix(col, uColorTop, smoothstep(0.50, 0.92, h));
+
+          // Soft dreamy Frutiger Aero sky-mint horizontal breath on right side
+          float mintSide = smoothstep(-0.3, 0.85, vWorldDir.x) * smoothstep(0.2, 0.78, h);
+          col = mix(col, vec3(0.84, 0.96, 0.96), mintSide * 0.38);
+
+          // Sunlit warm halo on upper-left
+          float sunDot = max(dot(normalize(vWorldDir), uSunDir), 0.0);
+          col += uSunColor * pow(sunDot, 5.0) * 0.24;
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+    scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+    // Matte pastel sunlit studio tabletop
+    const tableNormal = paintedMaps.normalMap.clone();
+    tableNormal.needsUpdate = true;
+    tableNormal.repeat.set(9, 9);
+
+    const tableMat = new THREE.MeshStandardMaterial({
+      color: 0xfbf1e7,
+      roughness: 0.78,
+      metalness: 0.0,
+      normalMap: tableNormal,
+      normalScale: new THREE.Vector2(0.14, 0.14),
+    });
+    tableMat.userData.baseNormalScale = 0.18;
+    paintedNormalMats.push(tableMat);
+
+    const tableMesh = new THREE.Mesh(new THREE.CircleGeometry(22, 64), tableMat);
+    tableMesh.rotation.x = -Math.PI / 2;
+    tableMesh.position.y = 0;
+    tableMesh.receiveShadow = true;
+    scene.add(tableMesh);
+
+    // Dappled sunlit caustics & glass-refraction pastel light pools on the tabletop
+    const causticsUniforms = {
+      uTime: { value: 0 },
+      uLeftPos: { value: new THREE.Vector2(-1.28, 0.08) },
+      uRightPos: { value: new THREE.Vector2(1.28, -0.06) },
+      uLeftWobble: { value: new THREE.Vector2(0, 0) },
+      uRightWobble: { value: new THREE.Vector2(0, 0) },
+    };
+
+    const causticsMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: causticsUniforms,
+      vertexShader: /* glsl */ `
+        varying vec2 vWorldXZ;
+        void main() {
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldXZ = wp.xz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        uniform vec2 uLeftPos;
+        uniform vec2 uRightPos;
+        uniform vec2 uLeftWobble;
+        uniform vec2 uRightWobble;
+        varying vec2 vWorldXZ;
+
+        float causticPattern(vec2 p, float t) {
+          float v = 0.0;
+          v += sin(p.x * 3.1 + t * 0.65 + cos(p.y * 2.7 - t * 0.45));
+          v += sin(p.y * 3.8 - t * 0.55 + sin(p.x * 2.3 + t * 0.5));
+          v += sin((p.x + p.y) * 2.4 + t * 0.4);
+          return smoothstep(0.65, 2.35, v);
+        }
+
+        void main() {
+          vec2 p = vWorldXZ;
+
+          // Sunlit window dappled leaf-light shimmer across tabletop
+          float fade = 1.0 - smoothstep(1.8, 6.2, length(p));
+          float dapple = causticPattern(p * 1.15, uTime) * fade * 0.11;
+
+          // Left cup warm amber-caramel refracted caustic crescent (projected away from sun)
+          vec2 sunOff = vec2(0.55, -0.38);
+          vec2 lCenter = uLeftPos + sunOff + uLeftWobble * 0.6;
+          float lDist = length(p - lCenter);
+          float lRing = exp(-pow((lDist - 0.58) * 3.6, 2.0)) * 0.42 + exp(-lDist * lDist * 1.9) * 0.22;
+          float lRipple = 0.72 + 0.28 * sin(lDist * 12.0 - uTime * 2.2 + p.x * 4.0);
+          vec3 leftGlow = vec3(1.0, 0.76, 0.46) * lRing * lRipple;
+
+          // Right cup jade-matcha & golden-custard refracted caustic crescent
+          vec2 rCenter = uRightPos + sunOff + uRightWobble * 0.6;
+          float rDist = length(p - rCenter);
+          float rRing = exp(-pow((rDist - 0.55) * 3.8, 2.0)) * 0.40 + exp(-rDist * rDist * 2.0) * 0.22;
+          float rRipple = 0.72 + 0.28 * sin(rDist * 12.5 - uTime * 2.4 + p.y * 4.0);
+          vec3 rightGlow = vec3(0.70, 0.96, 0.66) * rRing * rRipple;
+
+          vec3 finalCol = vec3(1.0, 0.96, 0.88) * dapple + leftGlow + rightGlow;
+          float alpha = clamp(length(finalCol), 0.0, 0.75);
+          gl_FragColor = vec4(finalCol, alpha);
+        }
+      `
+    });
+    const causticsPlane = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), causticsMat);
+    causticsPlane.rotation.x = -Math.PI / 2;
+    causticsPlane.position.y = 0.004;
+    scene.add(causticsPlane);
+
+    // =========================================================================
+    // 5. SOFT-BODY JELLY WOBBLE VERTEX SHADER INJECTION (onBeforeCompile)
+    // =========================================================================
+    /**
+     * Injects damped spring horizontal shear, volume-preserving squash & stretch,
+     * and traveling top-surface ripple waves directly into any MeshPhysical/StandardMaterial.
+     */
+    function injectJellyWobble(material, cupPhysics, opts = {}) {
+      const localBaseY = opts.baseY ?? 0.14;
+      const localHeight = opts.height ?? 1.9;
+      const wobbleScale = opts.wobbleScale ?? 1.0;
+      const squashScale = opts.squashScale ?? 1.0;
+      const rippleScale = opts.rippleScale ?? 1.0;
+      const useSecondary = opts.useSecondary ?? false; // For exaggerated pudding custard wobble!
+
+      material.customProgramCacheKey = () => 'boba-jelly-wobble-v2';
+
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms.uWobble = useSecondary ? cupPhysics.uPuddingWobble : cupPhysics.uWobble;
+        shader.uniforms.uSquash = useSecondary ? cupPhysics.uPuddingSquash : cupPhysics.uSquash;
+        shader.uniforms.uPhase = cupPhysics.uPhase;
+        shader.uniforms.uAmplitude = useSecondary ? cupPhysics.uPuddingAmp : cupPhysics.uAmplitude;
+        shader.uniforms.uStrength = cupPhysics.uStrength;
+        shader.uniforms.uLocalBaseY = { value: localBaseY };
+        shader.uniforms.uLocalHeight = { value: localHeight };
+        shader.uniforms.uWobbleScale = { value: wobbleScale };
+        shader.uniforms.uSquashScale = { value: squashScale };
+        shader.uniforms.uRippleScale = { value: rippleScale };
+
+        shader.vertexShader = shader.vertexShader
+          .replace(
+            '#include <common>',
+            /* glsl */ `
+            #include <common>
+            uniform vec2 uWobble;
+            uniform float uSquash;
+            uniform float uPhase;
+            uniform float uAmplitude;
+            uniform float uStrength;
+            uniform float uLocalBaseY;
+            uniform float uLocalHeight;
+            uniform float uWobbleScale;
+            uniform float uSquashScale;
+            uniform float uRippleScale;
+            `
+          )
+          .replace(
+            '#include <begin_vertex>',
+            /* glsl */ `
+            #include <begin_vertex>
+            {
+              float h = clamp((transformed.y - uLocalBaseY) / max(0.001, uLocalHeight), 0.0, 1.5);
+              float bend = h * h * uStrength * uWobbleScale;
+
+              // Quadratic horizontal jelly shear
+              transformed.x += uWobble.x * bend;
+              transformed.z += uWobble.y * bend;
+
+              // Volume-preserving vertical squash & stretch
+              float sq = clamp(uSquash * uStrength * uSquashScale, -0.24, 0.28);
+              transformed.y = uLocalBaseY + (transformed.y - uLocalBaseY) * (1.0 + sq);
+              float radial = mix(1.0, 1.0 / sqrt(max(0.58, 1.0 + sq)), smoothstep(0.0, 0.72, h));
+              transformed.x *= radial;
+              transformed.z *= radial;
+
+              // Traveling surface ripple wave
+              float ripple = sin(transformed.x * 7.8 + transformed.z * 6.4 - uPhase * 9.0)
+                           * 0.038 * uAmplitude * uStrength * uRippleScale * smoothstep(0.32, 1.0, h);
+              transformed.y += ripple;
+            }
+            `
+          );
+      };
+      return material;
+    }
+
+    // =========================================================================
+    // 6. SHARED CUP PHYSICS STATE & HELPER BUILDERS
+    // =========================================================================
+    function createCupPhysics() {
+      return {
+        // Primary liquid/foam spring oscillator
+        wobbleX: 0, wobbleZ: 0,
+        velX: 0, velZ: 0,
+        squash: 0, squashVel: 0,
+        phase: Math.random() * 10,
+        amplitude: 0,
+
+        // Secondary soft-body spring for pudding custard (bouncier, slightly lower stiffness)
+        pWobbleX: 0, pWobbleZ: 0,
+        pVelX: 0, pVelZ: 0,
+        pSquash: 0, pSquashVel: 0,
+        pAmplitude: 0,
+
+        // Cup tilt recoil around its base
+        tiltX: 0, tiltZ: 0,
+        tiltVelX: 0, tiltVelZ: 0,
+
+        // Uniform references shared by shaders
+        uWobble: { value: new THREE.Vector2(0, 0) },
+        uSquash: { value: 0 },
+        uPhase: { value: 0 },
+        uAmplitude: { value: 0 },
+        uStrength: { value: state.wobbleStrength },
+
+        uPuddingWobble: { value: new THREE.Vector2(0, 0) },
+        uPuddingSquash: { value: 0 },
+        uPuddingAmp: { value: 0 },
+      };
+    }
+
+    function impulseCup(cupObj, ix, iz, squashImpulse = -1.6) {
+      const p = cupObj.physics;
+      const mult = 0.45 + state.wobbleStrength * 0.95;
+
+      p.velX += ix * mult;
+      p.velZ += iz * mult;
+      p.squashVel += squashImpulse * mult;
+      p.amplitude = Math.min(1.8, p.amplitude + Math.hypot(ix, iz) * 0.35 + 0.55);
+
+      // Pudding gets extra playful delayed momentum
+      p.pVelX += ix * 1.55 * mult;
+      p.pVelZ += iz * 1.55 * mult;
+      p.pSquashVel += squashImpulse * 1.65 * mult;
+      p.pAmplitude = Math.min(2.2, p.pAmplitude + Math.hypot(ix, iz) * 0.48 + 0.8);
+
+      // Gentle cup tilt recoil
+      p.tiltVelZ -= ix * 0.32 * mult;
+      p.tiltVelX += iz * 0.32 * mult;
+    }
+
+    /**
+     * Builds a sleek curved cafe glass cup (outer glass wall + inner back wall + thick glossy glass base + lip rim + condensation droplets).
+     */
+    function buildGlassCupShell(opts) {
+      const {
+        height = 2.52,
+        botR = 0.66,
+        topR = 0.90,
+        tint = 0xffffff,
+        dropletSeed = 11,
+      } = opts;
+
+      const shellGroup = new THREE.Group();
+
+      // Smooth curved cafe silhouette
+      const pts = [];
+      pts.push(new THREE.Vector2(0.001, 0.0));
+      pts.push(new THREE.Vector2(botR - 0.12, 0.0));
+      pts.push(new THREE.Vector2(botR - 0.02, 0.04));
+      pts.push(new THREE.Vector2(botR, 0.14));
+      for (let i = 1; i <= 14; i++) {
+        const t = i / 14;
+        const y = THREE.MathUtils.lerp(0.14, height - 0.04, t);
+        // Subtle organic curve widening slightly gracefully toward the top
+        const curve = Math.pow(t, 0.92);
+        const r = THREE.MathUtils.lerp(botR, topR, curve);
+        pts.push(new THREE.Vector2(r, y));
+      }
+      pts.push(new THREE.Vector2(topR + 0.022, height));
+
+      const glassGeo = new THREE.LatheGeometry(pts, 64);
+
+      // Back face of glass (softly visible behind drink)
+      const backGlassMat = new THREE.MeshPhysicalMaterial({
+        color: tint,
+        transparent: true,
+        opacity: 0.11,
+        roughness: 0.06,
+        metalness: 0.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.03,
+        side: THREE.BackSide,
+        depthWrite: false,
+      });
+      const backMesh = new THREE.Mesh(glassGeo, backGlassMat);
+      backMesh.renderOrder = 2;
+      shellGroup.add(backMesh);
+
+      // Front face of glass (crisp Frutiger Aero specular reflections without occluding inner transmission)
+      const frontGlassMat = registerPaintedMaterial(
+        new THREE.MeshPhysicalMaterial({
+          color: tint,
+          transparent: true,
+          opacity: 0.19,
+          roughness: 0.035,
+          metalness: 0.02,
+          ior: 1.48,
+          reflectivity: 1.0,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.018,
+          envMapIntensity: 2.35,
+          side: THREE.FrontSide,
+          depthWrite: false,
+        }),
+        0.09 // Ultra-subtle hand-painted shimmer on the glass speculars
+      );
+      const frontMesh = new THREE.Mesh(glassGeo, frontGlassMat);
+      frontMesh.renderOrder = 22;
+      shellGroup.add(frontMesh);
+
+      // Thick glossy solid glass base puck (grounds the cup aesthetically on the tabletop)
+      const baseGeo = new THREE.CylinderGeometry(botR - 0.02, botR - 0.06, 0.12, 48);
+      const baseMat = new THREE.MeshPhysicalMaterial({
+        color: tint,
+        transparent: true,
+        opacity: 0.42,
+        roughness: 0.05,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.02,
+        envMapIntensity: 2.0,
+        depthWrite: false,
+      });
+      const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+      baseMesh.position.y = 0.065;
+      baseMesh.castShadow = true;
+      baseMesh.renderOrder = 4;
+      shellGroup.add(baseMesh);
+
+      // Subtle rolled lip rim at the top of the glass
+      const lipGeo = new THREE.TorusGeometry(topR + 0.008, 0.024, 16, 64);
+      const lipMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.62,
+        roughness: 0.04,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.02,
+        envMapIntensity: 2.2,
+      });
+      const lipMesh = new THREE.Mesh(lipGeo, lipMat);
+      lipMesh.rotation.x = Math.PI / 2;
+      lipMesh.position.y = height;
+      lipMesh.renderOrder = 24;
+      shellGroup.add(lipMesh);
+
+      // Crisp MaoMomiji painted white glass highlight ribbon along front-left curve
+      const streakPts = [];
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const y = THREE.MathUtils.lerp(0.28, height - 0.16, t);
+        const r = THREE.MathUtils.lerp(botR, topR, Math.pow(t, 0.92)) + 0.012;
+        const a = Math.PI * 0.69;
+        streakPts.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r));
+      }
+      const streakCurve = new THREE.CatmullRomCurve3(streakPts);
+      const streakGeo = new THREE.TubeGeometry(streakCurve, 18, 0.016, 8, false);
+      const streakMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.48,
+        depthWrite: false,
+      });
+      const streakMesh = new THREE.Mesh(streakGeo, streakMat);
+      streakMesh.renderOrder = 25;
+      shellGroup.add(streakMesh);
+
+      // Glossy exterior condensation water droplets (InstancedMesh)
+      const rand = mulberry32(dropletSeed);
+      const dropCount = 46;
+      const dropGeo = new THREE.SphereGeometry(0.022, 10, 8);
+      const dropMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.56,
+        roughness: 0.02,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.01,
+        envMapIntensity: 2.6,
+        depthWrite: false,
+      });
+      const droplets = new THREE.InstancedMesh(dropGeo, dropMat, dropCount);
+      const dummy = new THREE.Object3D();
+      for (let i = 0; i < dropCount; i++) {
+        const t = 0.12 + rand() * 0.76;
+        const y = THREE.MathUtils.lerp(0.14, height - 0.06, t);
+        const r = THREE.MathUtils.lerp(botR, topR, Math.pow(t, 0.92)) + 0.008;
+        const theta = rand() * Math.PI * 2;
+        const s = 0.45 + rand() * 1.15;
+        dummy.position.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+        dummy.lookAt(Math.cos(theta) * (r + 1), y, Math.sin(theta) * (r + 1));
+        dummy.scale.set(s, s * (1.1 + rand() * 0.35), s * 0.48);
+        dummy.updateMatrix();
+        droplets.setMatrixAt(i, dummy.matrix);
+      }
+      droplets.instanceMatrix.needsUpdate = true;
+      droplets.renderOrder = 26;
+      shellGroup.add(droplets);
+
+      // Invisible hit-collider cylinder for effortless raycast clicking/poking
+      const hitGeo = new THREE.CylinderGeometry(topR + 0.08, botR + 0.08, height + 0.45, 20);
+      const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+      hitMesh.position.y = (height + 0.35) * 0.5;
+      shellGroup.add(hitMesh);
+
+      return { shellGroup, hitMesh };
+    }
+
+    /**
+     * Generates well-packed non-overlapping pearl positions inside the lower cup.
+     */
+    function generatePackedPearls(count, radius, minY, maxY, botR, topR, cupHeight, seed) {
+      const rand = mulberry32(seed);
+      const list = [];
+      let attempts = 0;
+      while (list.length < count && attempts < count * 55) {
+        attempts++;
+        const y = minY + Math.pow(rand(), 1.35) * (maxY - minY);
+        const t = THREE.MathUtils.clamp((y - 0.14) / (cupHeight - 0.18), 0, 1);
+        const cupR = THREE.MathUtils.lerp(botR, topR, t) - radius - 0.045;
+        // Bias slightly toward outer wall so pearls are lushly visible through glass!
+        const radBias = list.length < count * 0.65 ? (0.52 + 0.48 * rand()) : Math.sqrt(rand());
+        const r = radBias * Math.max(0.05, cupR);
+        const a = rand() * Math.PI * 2;
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+
+        let ok = true;
+        for (const p of list) {
+          const d = Math.hypot(x - p.x, y - p.y, z - p.z);
+          if (d < radius * 1.88) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) {
+          list.push({
+            x, y, z,
+            scale: 0.88 + rand() * 0.24,
+            rotX: rand() * Math.PI,
+            rotY: rand() * Math.PI,
+            phase: rand() * Math.PI * 2,
+          });
+        }
+      }
+      return list;
+    }
+
+    /**
+     * Builds a tilted wide translucent boba straw with bevel bottom & glossy rim.
+     */
+    function buildBobaStraw(colorHex, length = 3.15, radius = 0.108) {
+      const group = new THREE.Group();
+      const strawGeo = new THREE.CylinderGeometry(radius, radius, length, 28, 1, true);
+      const strawMat = registerPaintedMaterial(
+        new THREE.MeshPhysicalMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.78,
+          roughness: 0.12,
+          metalness: 0.0,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.04,
+          envMapIntensity: 1.5,
+          side: THREE.DoubleSide,
+        }),
+        0.12
+      );
+      const body = new THREE.Mesh(strawGeo, strawMat);
+      body.castShadow = true;
+      body.renderOrder = 18;
+      group.add(body);
+
+      const rimGeo = new THREE.TorusGeometry(radius, 0.011, 10, 28);
+      const rimMat = new THREE.MeshPhysicalMaterial({
+        color: colorHex,
+        roughness: 0.12,
+        clearcoat: 1.0,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = length * 0.5;
+      rim.renderOrder = 19;
+      group.add(rim);
+
+      return group;
+    }
+
+    // Shared refractive crystal ice cube geometry & material
+    const iceGeo = new RoundedBoxGeometry(0.32, 0.30, 0.32, 5, 0.075);
+    const iceMat = registerPaintedMaterial(
+      new THREE.MeshPhysicalMaterial({
+        color: 0xf7fdff,
+        transmission: 0.92,
+        thickness: 0.7,
+        ior: 1.31,
+        roughness: 0.045,
+        metalness: 0.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.02,
+        attenuationColor: new THREE.Color(0xdcf4ff),
+        attenuationDistance: 2.2,
+        envMapIntensity: 1.85,
+      }),
+      0.16
+    );
+
+    // =========================================================================
+    // 7. LEFT CUP — 黑糖波霸厚奶蓋 (Brown Sugar Boba Cheese Foam Latte)
+    // =========================================================================
+    function buildBrownSugarCup() {
+      const root = new THREE.Group();
+      root.position.set(-1.28, 0, 0.08);
+
+      const physics = createCupPhysics();
+      const H = 2.54, botR = 0.67, topR = 0.91;
+
+      const { shellGroup, hitMesh } = buildGlassCupShell({
+        height: H, botR, topR, tint: 0xfffcf8, dropletSeed: 31,
+      });
+      root.add(shellGroup);
+
+      // 1) Creamy layered milk tea body (LatheGeometry with smooth meniscus top)
+      const liqBot = 0.14, liqTop = 1.98;
+      const liqPts = [
+        new THREE.Vector2(0.001, liqBot),
+        new THREE.Vector2(botR - 0.08, liqBot),
+        new THREE.Vector2(botR - 0.042, liqBot + 0.05),
+      ];
+      for (let i = 1; i <= 14; i++) {
+        const t = i / 14;
+        const y = THREE.MathUtils.lerp(liqBot + 0.05, liqTop, t);
+        const r = THREE.MathUtils.lerp(botR, topR, Math.pow((y - 0.14) / (H - 0.18), 0.92)) - 0.042;
+        liqPts.push(new THREE.Vector2(r, y));
+      }
+      // Subtle meniscus top dome
+      const topLiqR = liqPts[liqPts.length - 1].x;
+      liqPts.push(new THREE.Vector2(topLiqR * 0.72, liqTop + 0.022));
+      liqPts.push(new THREE.Vector2(topLiqR * 0.35, liqTop + 0.032));
+      liqPts.push(new THREE.Vector2(0.001, liqTop + 0.034));
+
+      const milkTeaGeo = new THREE.LatheGeometry(liqPts, 56);
+      const milkTeaTex = createLayeredLiquidTexture(
+        [
+          [0.0,  '#a86234'],
+          [0.18, '#d49a68'],
+          [0.45, '#e8be92'],
+          [0.74, '#f5d8b4'],
+          [1.0,  '#fbf0df'],
+        ],
+        'rgba(255, 245, 228, ALPHA)',
+        111
+      );
+      const milkTeaMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            map: milkTeaTex,
+            roughness: 0.24,
+            roughnessMap: paintedMaps.roughnessMap,
+            metalness: 0.0,
+            clearcoat: 0.72,
+            clearcoatRoughness: 0.14,
+            sheen: 0.45,
+            sheenColor: new THREE.Color(0xffe6c4),
+            sheenRoughness: 0.55,
+            emissive: new THREE.Color(0x6e3d1c),
+            emissiveIntensity: 0.12,
+            transparent: true,
+            opacity: 0.92,
+          }),
+          0.42
+        ),
+        physics,
+        { baseY: liqBot, height: liqTop - liqBot, wobbleScale: 0.95, squashScale: 0.85, rippleScale: 1.0 }
+      );
+      const milkTeaMesh = new THREE.Mesh(milkTeaGeo, milkTeaMat);
+      milkTeaMesh.castShadow = true;
+      milkTeaMesh.receiveShadow = true;
+      milkTeaMesh.renderOrder = 6;
+      root.add(milkTeaMesh);
+
+      // 2) Swirled Brown Sugar Tiger-Stripe clinging inside the glass wall
+      const tigerPts = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const y = THREE.MathUtils.lerp(0.16, 2.08, t);
+        const r = THREE.MathUtils.lerp(botR, topR, Math.pow((y - 0.14) / (H - 0.18), 0.92)) - 0.026;
+        tigerPts.push(new THREE.Vector2(r, y));
+      }
+      const tigerGeo = new THREE.LatheGeometry(tigerPts, 56);
+      const tigerTex = createBrownSugarTigerTexture(204);
+      const tigerMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            map: tigerTex,
+            transparent: true,
+            opacity: 0.94,
+            roughness: 0.09,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.04,
+            emissive: new THREE.Color(0x3a1405),
+            emissiveIntensity: 0.14,
+            depthWrite: false,
+          }),
+          0.35
+        ),
+        physics,
+        { baseY: 0.16, height: 1.92, wobbleScale: 0.82, squashScale: 0.6, rippleScale: 0.35 }
+      );
+      const tigerMesh = new THREE.Mesh(tigerGeo, tigerMat);
+      tigerMesh.renderOrder = 14;
+      root.add(tigerMesh);
+
+      // 3) ~38 Glossy, Plump Black Sugar Boba Pearls clustered at the bottom
+      const bobaRadius = 0.112;
+      const pearlData = generatePackedPearls(39, bobaRadius, 0.24, 0.78, botR, topR, H, 505);
+      const bobaGeo = new THREE.SphereGeometry(bobaRadius, 20, 16);
+      const bobaMat = registerPaintedMaterial(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x260f07,
+          roughness: 0.075,
+          metalness: 0.0,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.025,
+          sheen: 0.85,
+          sheenColor: new THREE.Color(0xc45e1a), // Warm caramel translucent rim glow!
+          sheenRoughness: 0.28,
+          emissive: new THREE.Color(0x331204),
+          emissiveIntensity: 0.22,
+          envMapIntensity: 1.9,
+        }),
+        0.18
+      );
+
+      const pearlMeshes = [];
+      for (const p of pearlData) {
+        const m = new THREE.Mesh(bobaGeo, bobaMat);
+        m.position.set(p.x, p.y, p.z);
+        m.scale.setScalar(p.scale);
+        m.rotation.set(p.rotX, p.rotY, 0);
+        m.renderOrder = 11;
+        root.add(m);
+        pearlMeshes.push({ mesh: m, base: p });
+      }
+
+      // 4) Translucent Crystal Ice Cubes bobbing near top of liquid
+      const iceConfigs = [
+        { x: -0.34, y: 1.66, z:  0.22, rx: 0.25, ry: 0.4,  rz: 0.15, s: 1.02 },
+        { x:  0.26, y: 1.62, z:  0.30, rx: -0.2, ry: 1.1,  rz: 0.28, s: 0.94 },
+        { x: -0.02, y: 1.72, z: -0.28, rx: 0.35, ry: 0.8,  rz: -0.2, s: 0.96 },
+        { x:  0.38, y: 1.54, z: -0.14, rx: 0.12, ry: 2.1,  rz: 0.32, s: 0.88 },
+        { x: -0.44, y: 1.50, z: -0.16, rx: -0.3, ry: 0.5,  rz: -0.25, s: 0.86 },
+      ];
+      const iceItems = [];
+      for (let i = 0; i < iceConfigs.length; i++) {
+        const ic = iceConfigs[i];
+        const m = new THREE.Mesh(iceGeo, iceMat);
+        m.position.set(ic.x, ic.y, ic.z);
+        m.rotation.set(ic.rx, ic.ry, ic.rz);
+        m.scale.setScalar(ic.s);
+        m.renderOrder = 13;
+        root.add(m);
+        iceItems.push({ mesh: m, base: ic, phase: i * 1.3 });
+      }
+
+      // 5) Lush, Domed Salted Cheese Cream Foam Cap (wobbles like soft soufflé!)
+      const foamBaseY = 1.92;
+      const foamPts = [];
+      const foamR = topR - 0.048;
+      foamPts.push(new THREE.Vector2(0.001, foamBaseY));
+      foamPts.push(new THREE.Vector2(foamR, foamBaseY));
+      foamPts.push(new THREE.Vector2(foamR, foamBaseY + 0.18));
+      foamPts.push(new THREE.Vector2(foamR * 0.97, foamBaseY + 0.30));
+      foamPts.push(new THREE.Vector2(foamR * 0.86, foamBaseY + 0.44));
+      foamPts.push(new THREE.Vector2(foamR * 0.62, foamBaseY + 0.56));
+      foamPts.push(new THREE.Vector2(foamR * 0.30, foamBaseY + 0.62));
+      foamPts.push(new THREE.Vector2(0.001, foamBaseY + 0.64));
+
+      const foamGeo = new THREE.LatheGeometry(foamPts, 64);
+      // Add organic hand-piped cream wave undulation to the foam dome
+      const fPos = foamGeo.attributes.position;
+      for (let i = 0; i < fPos.count; i++) {
+        const vx = fPos.getX(i);
+        const vy = fPos.getY(i);
+        const vz = fPos.getZ(i);
+        const r = Math.hypot(vx, vz);
+        const ang = Math.atan2(vz, vx);
+        const hNorm = THREE.MathUtils.clamp((vy - foamBaseY) / 0.64, 0, 1);
+        const undulate = Math.sin(ang * 5.0 + r * 3.5) * 0.018 * Math.sin(hNorm * Math.PI);
+        fPos.setY(i, vy + undulate);
+      }
+      foamGeo.computeVertexNormals();
+
+      const foamMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            color: 0xfffaf1,
+            roughness: 0.30,
+            roughnessMap: paintedMaps.roughnessMap,
+            metalness: 0.0,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.22,
+            sheen: 0.65,
+            sheenColor: new THREE.Color(0xfff1d6),
+            sheenRoughness: 0.48,
+            emissive: new THREE.Color(0xffe9cc),
+            emissiveIntensity: 0.08,
+          }),
+          0.62
+        ),
+        physics,
+        { baseY: foamBaseY, height: 0.64, wobbleScale: 1.45, squashScale: 1.35, rippleScale: 1.45 }
+      );
+      const foamMesh = new THREE.Mesh(foamGeo, foamMat);
+      foamMesh.castShadow = true;
+      foamMesh.receiveShadow = true;
+      foamMesh.renderOrder = 15;
+      root.add(foamMesh);
+
+      // Torched Brown-Sugar Caramel Drizzle Ribbon swirling across the cheese foam
+      const drizzlePts = [];
+      for (let i = 0; i <= 36; i++) {
+        const t = i / 36;
+        const angle = t * Math.PI * 3.6 + 0.5;
+        const r = THREE.MathUtils.lerp(0.08, foamR * 0.78, t);
+        const domeY = foamBaseY + 0.635 - Math.pow(r / foamR, 2.0) * 0.26;
+        drizzlePts.push(new THREE.Vector3(Math.cos(angle) * r, domeY, Math.sin(angle) * r));
+      }
+      const drizzleGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(drizzlePts), 48, 0.022, 10, false);
+      const drizzleMat = injectJellyWobble(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x5c2008,
+          roughness: 0.06,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.02,
+          emissive: new THREE.Color(0x471804),
+          emissiveIntensity: 0.15,
+        }),
+        physics,
+        { baseY: foamBaseY, height: 0.64, wobbleScale: 1.48, squashScale: 1.35, rippleScale: 1.45 }
+      );
+      const drizzleMesh = new THREE.Mesh(drizzleGeo, drizzleMat);
+      drizzleMesh.renderOrder = 16;
+      root.add(drizzleMesh);
+
+      // 3 Glossy Boba Pearls perched charmingly in the top cheese cream
+      const topPearlCoords = [
+        { x: -0.18, y: foamBaseY + 0.56, z:  0.22, s: 0.96 },
+        { x:  0.04, y: foamBaseY + 0.60, z:  0.14, s: 1.04 },
+        { x: -0.05, y: foamBaseY + 0.57, z:  0.34, s: 0.88 },
+      ];
+      const topPearls = [];
+      for (const tp of topPearlCoords) {
+        const m = new THREE.Mesh(bobaGeo, bobaMat);
+        m.position.set(tp.x, tp.y, tp.z);
+        m.scale.setScalar(tp.s);
+        m.castShadow = true;
+        m.renderOrder = 17;
+        root.add(m);
+        topPearls.push({ mesh: m, base: tp });
+      }
+
+      // 6) Wide Translucent Coral-Amber Boba Straw
+      const straw = buildBobaStraw(0xf0926c, 3.25, 0.106);
+      straw.position.set(0.28, 1.98, -0.12);
+      straw.rotation.z = -0.17;
+      straw.rotation.x = 0.07;
+      root.add(straw);
+
+      scene.add(root);
+
+      return {
+        id: 'left',
+        name: '黑糖波霸厚奶蓋',
+        root,
+        hitMesh,
+        physics,
+        pearlMeshes,
+        iceItems,
+        topPearls,
+        puddingGroup: null,
+        straw,
+        baseStrawPos: straw.position.clone(),
+        baseStrawRot: straw.rotation.clone(),
+      };
+    }
+
+    // =========================================================================
+    // 8. RIGHT CUP — 宇治抹茶焦糖布丁珍奶 (Uji Matcha Pudding Boba)
+    // =========================================================================
+    function buildMatchaPuddingCup() {
+      const root = new THREE.Group();
+      root.position.set(1.28, 0, -0.06);
+
+      const physics = createCupPhysics();
+      const H = 2.46, botR = 0.65, topR = 0.88;
+
+      const { shellGroup, hitMesh } = buildGlassCupShell({
+        height: H, botR, topR, tint: 0xf4fff9, dropletSeed: 89,
+      });
+      root.add(shellGroup);
+
+      // 1) Layered Fresh Milk Bottom + Dreamy Jade Uji Matcha Liquid Body
+      const liqBot = 0.14, liqTop = 1.92;
+      const liqPts = [
+        new THREE.Vector2(0.001, liqBot),
+        new THREE.Vector2(botR - 0.08, liqBot),
+        new THREE.Vector2(botR - 0.042, liqBot + 0.05),
+      ];
+      for (let i = 1; i <= 14; i++) {
+        const t = i / 14;
+        const y = THREE.MathUtils.lerp(liqBot + 0.05, liqTop, t);
+        const r = THREE.MathUtils.lerp(botR, topR, Math.pow((y - 0.14) / (H - 0.18), 0.92)) - 0.042;
+        liqPts.push(new THREE.Vector2(r, y));
+      }
+      const topLiqR = liqPts[liqPts.length - 1].x;
+      liqPts.push(new THREE.Vector2(topLiqR * 0.72, liqTop + 0.02));
+      liqPts.push(new THREE.Vector2(topLiqR * 0.35, liqTop + 0.028));
+      liqPts.push(new THREE.Vector2(0.001, liqTop + 0.03));
+
+      const matchaGeo = new THREE.LatheGeometry(liqPts, 56);
+      const matchaTex = createLayeredLiquidTexture(
+        [
+          [0.0,  '#fffbf2'], // Fresh creamy milk bottom
+          [0.24, '#f8f6e8'],
+          [0.44, '#cfe6bc'], // Soft celadon blend
+          [0.72, '#86c46a'], // Luminous jade Uji matcha
+          [1.0,  '#5ea84c'],
+        ],
+        'rgba(244, 252, 232, ALPHA)',
+        222
+      );
+      const matchaMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            map: matchaTex,
+            roughness: 0.20,
+            roughnessMap: paintedMaps.roughnessMap,
+            metalness: 0.0,
+            clearcoat: 0.85,
+            clearcoatRoughness: 0.10,
+            sheen: 0.42,
+            sheenColor: new THREE.Color(0xd7f7c4),
+            sheenRoughness: 0.45,
+            emissive: new THREE.Color(0x2e6622),
+            emissiveIntensity: 0.14,
+            transparent: true,
+            opacity: 0.90,
+          }),
+          0.42
+        ),
+        physics,
+        { baseY: liqBot, height: liqTop - liqBot, wobbleScale: 1.0, squashScale: 0.9, rippleScale: 1.05 }
+      );
+      const matchaMesh = new THREE.Mesh(matchaGeo, matchaMat);
+      matchaMesh.castShadow = true;
+      matchaMesh.receiveShadow = true;
+      matchaMesh.renderOrder = 6;
+      root.add(matchaMesh);
+
+      // 2) Honey-Amber Boba Pearls & Crystal Agar Jelly Cubes at the base
+      const honeyRadius = 0.104;
+      const honeyData = generatePackedPearls(24, honeyRadius, 0.24, 0.72, botR, topR, H, 606);
+      const honeyGeo = new THREE.SphereGeometry(honeyRadius, 18, 14);
+      const honeyMat = registerPaintedMaterial(
+        new THREE.MeshPhysicalMaterial({
+          color: 0xd4852a,
+          roughness: 0.08,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.03,
+          sheen: 0.9,
+          sheenColor: new THREE.Color(0xffe28a),
+          sheenRoughness: 0.25,
+          emissive: new THREE.Color(0x82440b),
+          emissiveIntensity: 0.26,
+          envMapIntensity: 1.85,
+        }),
+        0.16
+      );
+
+      const pearlMeshes = [];
+      for (const p of honeyData) {
+        const m = new THREE.Mesh(honeyGeo, honeyMat);
+        m.position.set(p.x, p.y, p.z);
+        m.scale.setScalar(p.scale);
+        m.renderOrder = 11;
+        root.add(m);
+        pearlMeshes.push({ mesh: m, base: p });
+      }
+
+      // Sparkling Crystal Agar Jelly Cubes mixed among the honey boba
+      const agarGeo = new RoundedBoxGeometry(0.18, 0.18, 0.18, 4, 0.045);
+      const agarMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf4fff6,
+        transmission: 0.88,
+        thickness: 0.45,
+        ior: 1.38,
+        roughness: 0.06,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.02,
+        attenuationColor: new THREE.Color(0xcff5d8),
+        attenuationDistance: 1.4,
+      });
+      const agarData = generatePackedPearls(12, 0.115, 0.26, 0.82, botR, topR, H, 707);
+      for (const a of agarData) {
+        const m = new THREE.Mesh(agarGeo, agarMat);
+        m.position.set(a.x, a.y, a.z);
+        m.rotation.set(a.rotX, a.rotY, a.phase);
+        m.renderOrder = 12;
+        root.add(m);
+        pearlMeshes.push({ mesh: m, base: a });
+      }
+
+      // 3) Floating Refractive Crystal Ice Cubes near upper matcha layer
+      const iceConfigs = [
+        { x: -0.36, y: 1.56, z:  0.26, rx: 0.3,  ry: 0.6,  rz: 0.18, s: 0.92 },
+        { x:  0.34, y: 1.52, z:  0.22, rx: -0.2, ry: 1.4,  rz: -0.2, s: 0.88 },
+        { x: -0.28, y: 1.62, z: -0.28, rx: 0.22, ry: 2.0,  rz: 0.25, s: 0.90 },
+        { x:  0.32, y: 1.60, z: -0.24, rx: -0.3, ry: 0.3,  rz: 0.14, s: 0.86 },
+      ];
+      const iceItems = [];
+      for (let i = 0; i < iceConfigs.length; i++) {
+        const ic = iceConfigs[i];
+        const m = new THREE.Mesh(iceGeo, iceMat);
+        m.position.set(ic.x, ic.y, ic.z);
+        m.rotation.set(ic.rx, ic.ry, ic.rz);
+        m.scale.setScalar(ic.s);
+        m.renderOrder = 13;
+        root.add(m);
+        iceItems.push({ mesh: m, base: ic, phase: i * 1.5 + 0.6 });
+      }
+
+      // 4) STAR HERO: Golden-Amber Jiggly Custard Pudding (焦糖布丁) perched on top!
+      const puddingGroup = new THREE.Group();
+      puddingGroup.position.set(-0.04, 1.76, 0.04);
+      puddingGroup.rotation.set(0.06, 0.25, -0.05);
+
+      const pudH = 0.72;
+      const pudPts = [
+        new THREE.Vector2(0.001, 0.0),
+        new THREE.Vector2(0.56, 0.0),
+        new THREE.Vector2(0.58, 0.06),
+        new THREE.Vector2(0.54, 0.22),
+        new THREE.Vector2(0.47, 0.44),
+        new THREE.Vector2(0.41, 0.62),
+        new THREE.Vector2(0.35, 0.69),
+        new THREE.Vector2(0.18, pudH),
+        new THREE.Vector2(0.001, pudH),
+      ];
+      const puddingGeo = new THREE.LatheGeometry(pudPts, 72);
+
+      // Sculpt classic Japanese purin radial flutes into the pudding geometry
+      const pPos = puddingGeo.attributes.position;
+      for (let i = 0; i < pPos.count; i++) {
+        const vx = pPos.getX(i);
+        const vy = pPos.getY(i);
+        const vz = pPos.getZ(i);
+        const r = Math.hypot(vx, vz);
+        if (r > 0.08 && vy < 0.66) {
+          const ang = Math.atan2(vz, vx);
+          const fluteFactor = Math.sin(THREE.MathUtils.clamp(vy / 0.66, 0, 1) * Math.PI);
+          const scale = 1.0 + Math.cos(ang * 12.0) * 0.042 * fluteFactor;
+          pPos.setX(i, vx * scale);
+          pPos.setZ(i, vz * scale);
+        }
+      }
+      puddingGeo.computeVertexNormals();
+
+      const custardMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            color: 0xffd76b,
+            roughness: 0.11,
+            roughnessMap: paintedMaps.roughnessMap,
+            metalness: 0.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.04,
+            sheen: 0.55,
+            sheenColor: new THREE.Color(0xfff4bd),
+            sheenRoughness: 0.35,
+            emissive: new THREE.Color(0xe09018),
+            emissiveIntensity: 0.18,
+            envMapIntensity: 1.65,
+          }),
+          0.32
+        ),
+        physics,
+        {
+          baseY: 0.0,
+          height: pudH,
+          wobbleScale: 2.15, // Exaggerated, ultra-satisfying custard jiggle!
+          squashScale: 1.85,
+          rippleScale: 1.75,
+          useSecondary: true,
+        }
+      );
+      const custardMesh = new THREE.Mesh(puddingGeo, custardMat);
+      custardMesh.castShadow = true;
+      custardMesh.receiveShadow = true;
+      custardMesh.renderOrder = 16;
+      puddingGroup.add(custardMesh);
+
+      // Glossy Dark Caramel Crown Hat draping over the top of the fluted pudding
+      const capPts = [
+        new THREE.Vector2(0.455, 0.48),
+        new THREE.Vector2(0.432, 0.57),
+        new THREE.Vector2(0.412, 0.635),
+        new THREE.Vector2(0.355, 0.705),
+        new THREE.Vector2(0.185, pudH + 0.014),
+        new THREE.Vector2(0.001, pudH + 0.016),
+      ];
+      const capGeo = new THREE.LatheGeometry(capPts, 72);
+      const cPos = capGeo.attributes.position;
+      for (let i = 0; i < cPos.count; i++) {
+        const vx = cPos.getX(i);
+        const vy = cPos.getY(i);
+        const vz = cPos.getZ(i);
+        const r = Math.hypot(vx, vz);
+        const ang = Math.atan2(vz, vx);
+        // Organic dripping caramel skirt along bottom edge of crown
+        if (vy < 0.56) {
+          const drip = (Math.sin(ang * 7.0) * 0.5 + Math.cos(ang * 11.0 + 1.2) * 0.5) * 0.068;
+          cPos.setY(i, vy + drip);
+        }
+        // Match pudding flutes gently
+        if (r > 0.12 && vy < 0.68) {
+          const scale = 1.0 + Math.cos(ang * 12.0) * 0.036;
+          cPos.setX(i, vx * scale);
+          cPos.setZ(i, vz * scale);
+        }
+      }
+      capGeo.computeVertexNormals();
+
+      const caramelMat = injectJellyWobble(
+        registerPaintedMaterial(
+          new THREE.MeshPhysicalMaterial({
+            color: 0x5c2008,
+            roughness: 0.045,
+            metalness: 0.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.02,
+            sheen: 0.7,
+            sheenColor: new THREE.Color(0xc95d18),
+            sheenRoughness: 0.22,
+            emissive: new THREE.Color(0x4a1604),
+            emissiveIntensity: 0.24,
+            envMapIntensity: 2.1,
+          }),
+          0.22
+        ),
+        physics,
+        {
+          baseY: 0.0,
+          height: pudH,
+          wobbleScale: 2.18,
+          squashScale: 1.85,
+          rippleScale: 1.75,
+          useSecondary: true,
+        }
+      );
+      const capMesh = new THREE.Mesh(capGeo, caramelMat);
+      capMesh.castShadow = true;
+      capMesh.renderOrder = 17;
+      puddingGroup.add(capMesh);
+
+      // Tiny glossy fresh mint leaf garnish perched beside the caramel crown
+      const leafShape = new THREE.Shape();
+      leafShape.moveTo(0, 0);
+      leafShape.quadraticCurveTo(0.11, 0.08, 0.16, 0.24);
+      leafShape.quadraticCurveTo(0.02, 0.19, 0, 0);
+      const leafGeo = new THREE.ExtrudeGeometry(leafShape, { depth: 0.015, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.008, bevelSegments: 2 });
+      const leafMat = new THREE.MeshPhysicalMaterial({
+        color: 0x62b852,
+        roughness: 0.22,
+        clearcoat: 0.8,
+        emissive: new THREE.Color(0x1e4d16),
+        emissiveIntensity: 0.15,
+      });
+      const leaf1 = new THREE.Mesh(leafGeo, leafMat);
+      leaf1.position.set(0.06, pudH + 0.01, 0.04);
+      leaf1.rotation.set(0.55, 0.4, -0.35);
+      leaf1.renderOrder = 18;
+      puddingGroup.add(leaf1);
+
+      const leaf2 = new THREE.Mesh(leafGeo, leafMat);
+      leaf2.position.set(0.04, pudH + 0.01, 0.03);
+      leaf2.rotation.set(0.65, 2.35, -0.25);
+      leaf2.scale.setScalar(0.76);
+      leaf2.renderOrder = 18;
+      puddingGroup.add(leaf2);
+
+      root.add(puddingGroup);
+
+      // 5) Wide Pastel-Sage Translucent Boba Straw (complementary tilt angle)
+      const straw = buildBobaStraw(0x9bcfa0, 3.18, 0.104);
+      straw.position.set(0.36, 1.94, -0.18);
+      straw.rotation.z = -0.20;
+      straw.rotation.x = -0.06;
+      root.add(straw);
+
+      scene.add(root);
+
+      return {
+        id: 'right',
+        name: '宇治抹茶焦糖布丁',
+        root,
+        hitMesh,
+        physics,
+        pearlMeshes,
+        iceItems,
+        topPearls: [],
+        puddingGroup,
+        basePuddingPos: puddingGroup.position.clone(),
+        basePuddingRot: puddingGroup.rotation.clone(),
+        straw,
+        baseStrawPos: straw.position.clone(),
+        baseStrawRot: straw.rotation.clone(),
+      };
+    }
+
+    const leftCup = buildBrownSugarCup();
+    const rightCup = buildMatchaPuddingCup();
+    const cups = [leftCup, rightCup];
+
+    // =========================================================================
+    // 9. POST-PROCESSING PIPELINE: Bloom -> OutputPass -> Painterly Acrylic Pass
+    // =========================================================================
+    const renderTarget = new THREE.WebGLRenderTarget(
+      window.innerWidth * dpr,
+      window.innerHeight * dpr,
+      {
+        type: THREE.HalfFloatType,
+        samples: 4, // Crisp WebGL2 MSAA before post-processing
+      }
+    );
+
+    const composer = new EffectComposer(renderer, renderTarget);
+    composer.setPixelRatio(dpr);
+    composer.setSize(window.innerWidth, window.innerHeight);
+
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    // Subtle dreamy Frutiger Aero specular halation bloom
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.20, // strength
+      0.55, // radius
+      0.86  // high threshold so only sunlit specular glints glow
+    );
+    composer.addPass(bloomPass);
+
+    // Standard ACESFilmic tone mapping + sRGB conversion BEFORE painterly pass
+    // so Sobel gradients, Kuwahara variance, and fixed dither operate in perceptual space
+    const outputPass = new OutputPass();
+    composer.addPass(outputPass);
+
+    /**
+     * Custom Screen-Space Painterly Acrylic Brush + Fixed Dither ShaderPass
+     * Inspired directly by mesq.me/jelly-painting/ & MaoMomiji food art:
+     * 1) 3x3 Sobel luminance gradients -> local edge tangent frame
+     * 2) Oriented Anisotropic 4-Sector Soft Kuwahara brushstroke filter
+     * 3) Specular sparkle preservation + MaoMomiji pastel warm/cool acrylic lift
+     * 4) Static screen-space Interleaved Gradient Noise dither + fine cold-press paper grain
+     */
+    const PainterlyShader = {
+      uniforms: {
+        tDiffuse: { value: null },
+        uResolution: { value: new THREE.Vector2(window.innerWidth * dpr, window.innerHeight * dpr) },
+        uDpr: { value: dpr },
+        uBrushStrength: { value: state.brushStrength },
+        uDitherStrength: { value: state.ditherStrength },
+      },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tDiffuse;
+        uniform vec2 uResolution;
+        uniform float uDpr;
+        uniform float uBrushStrength;
+        uniform float uDitherStrength;
+        varying vec2 vUv;
+
+        float luma(vec3 c) {
+          return dot(c, vec3(0.299, 0.587, 0.114));
+        }
+
+        // Static screen-space interleaved gradient noise (zero temporal flicker)
+        float ign(vec2 p) {
+          return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+        }
+
+        // Fine static cold-press watercolor paper tooth
+        float paperTooth(vec2 px) {
+          vec2 p = px * 0.42;
+          float n1 = fract(sin(dot(floor(p), vec2(127.1, 311.7))) * 43758.5453);
+          float n2 = fract(sin(dot(floor(p + vec2(1.0, 0.0)), vec2(127.1, 311.7))) * 43758.5453);
+          float n3 = fract(sin(dot(floor(p + vec2(0.0, 1.0)), vec2(127.1, 311.7))) * 43758.5453);
+          float n4 = fract(sin(dot(floor(p + vec2(1.0, 1.0)), vec2(127.1, 311.7))) * 43758.5453);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(n1, n2, f.x), mix(n3, n4, f.x), f.y);
+        }
+
+        void main() {
+          vec2 texel = (1.0 / uResolution) * max(1.0, uDpr * 0.92);
+          vec3 centerCol = texture2D(tDiffuse, vUv).rgb;
+          vec3 finalCol = centerCol;
+
+          if (uBrushStrength > 0.005) {
+            // 1. Sobel gradient for local edge-following brush orientation
+            float tl = luma(texture2D(tDiffuse, vUv + vec2(-texel.x,  texel.y)).rgb);
+            float t  = luma(texture2D(tDiffuse, vUv + vec2( 0.0,      texel.y)).rgb);
+            float tr = luma(texture2D(tDiffuse, vUv + vec2( texel.x,  texel.y)).rgb);
+            float l  = luma(texture2D(tDiffuse, vUv + vec2(-texel.x,  0.0    )).rgb);
+            float r  = luma(texture2D(tDiffuse, vUv + vec2( texel.x,  0.0    )).rgb);
+            float bl = luma(texture2D(tDiffuse, vUv + vec2(-texel.x, -texel.y)).rgb);
+            float b  = luma(texture2D(tDiffuse, vUv + vec2( 0.0,     -texel.y)).rgb);
+            float br = luma(texture2D(tDiffuse, vUv + vec2( texel.x, -texel.y)).rgb);
+
+            float gx = -tl - 2.0 * l - bl + tr + 2.0 * r + br;
+            float gy = -tl - 2.0 * t - tr + bl + 2.0 * b + br;
+
+            float gMag = length(vec2(gx, gy));
+            // Default gentle diagonal brush direction in flat pastel areas
+            vec2 tangent = gMag > 0.008 ? normalize(vec2(-gy, gx)) : vec2(0.82, 0.57);
+            vec2 normal  = vec2(-tangent.y, tangent.x);
+
+            // Anisotropic brush stroke dimensions (longer along contour tangent)
+            float stepScale = mix(0.65, 1.85, uBrushStrength);
+            vec2 tAxis = tangent * texel * 1.95 * stepScale;
+            vec2 nAxis = normal  * texel * 0.95 * stepScale;
+
+            // 2. 4-Sector Oriented Soft Kuwahara Filter (6 taps per sector = 24 taps, buttery 60fps)
+            vec3 m0 = vec3(0.0), s0 = vec3(0.0);
+            vec3 m1 = vec3(0.0), s1 = vec3(0.0);
+            vec3 m2 = vec3(0.0), s2 = vec3(0.0);
+            vec3 m3 = vec3(0.0), s3 = vec3(0.0);
+
+            for (int i = 0; i <= 2; i++) {
+              for (int j = 0; j <= 1; j++) {
+                float fi = float(i);
+                float fj = float(j);
+
+                vec3 c0 = texture2D(tDiffuse, vUv +  fi * tAxis + fj * nAxis).rgb;
+                vec3 c1 = texture2D(tDiffuse, vUv -  fi * tAxis + fj * nAxis).rgb;
+                vec3 c2 = texture2D(tDiffuse, vUv -  fi * tAxis - fj * nAxis).rgb;
+                vec3 c3 = texture2D(tDiffuse, vUv +  fi * tAxis - fj * nAxis).rgb;
+
+                m0 += c0; s0 += c0 * c0;
+                m1 += c1; s1 += c1 * c1;
+                m2 += c2; s2 += c2 * c2;
+                m3 += c3; s3 += c3 * c3;
+              }
+            }
+
+            float invN = 1.0 / 6.0;
+            m0 *= invN; m1 *= invN; m2 *= invN; m3 *= invN;
+
+            float v0 = dot(max(vec3(0.0), s0 * invN - m0 * m0), vec3(0.333));
+            float v1 = dot(max(vec3(0.0), s1 * invN - m1 * m1), vec3(0.333));
+            float v2 = dot(max(vec3(0.0), s2 * invN - m2 * m2), vec3(0.333));
+            float v3 = dot(max(vec3(0.0), s3 * invN - m3 * m3), vec3(0.333));
+
+            // Exponential soft weighting prevents harsh posterized edges
+            float q = 26.0;
+            float w0 = exp(-v0 * q);
+            float w1 = exp(-v1 * q);
+            float w2 = exp(-v2 * q);
+            float w3 = exp(-v3 * q);
+            vec3 kuwaharaCol = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / max(0.0001, w0 + w1 + w2 + w3);
+
+            // Preserve crispy MaoMomiji white specular glints on glass, pearls & ice
+            float highlightMask = smoothstep(0.84, 0.98, luma(centerCol));
+            float blendAmt = uBrushStrength * (1.0 - highlightMask * 0.52);
+            finalCol = mix(centerCol, kuwaharaCol, blendAmt);
+
+            // 3. MaoMomiji luminous acrylic pastel color grading
+            float lum = luma(finalCol);
+            vec3 coolShadowLift = vec3(0.014, 0.012, 0.030) * (1.0 - smoothstep(0.0, 0.55, lum));
+            vec3 warmSunLift    = vec3(0.022, 0.011, -0.006) * smoothstep(0.55, 1.0, lum);
+            finalCol += (coolShadowLift + warmSunLift) * (0.35 + 0.65 * uBrushStrength);
+
+            // Gentle appetizing vibrance boost
+            float maxC = max(finalCol.r, max(finalCol.g, finalCol.b));
+            float minC = min(finalCol.r, min(finalCol.g, finalCol.b));
+            float sat = maxC - minC;
+            finalCol = mix(vec3(luma(finalCol)), finalCol, 1.0 + 0.14 * uBrushStrength * (1.0 - sat));
+          }
+
+          // 4. Static Screen-Space Fixed Dither + Cold-Press Paper Grain
+          if (uDitherStrength > 0.005) {
+            float d = (ign(gl_FragCoord.xy) - 0.5) * 0.036 * uDitherStrength;
+            float tooth = (paperTooth(gl_FragCoord.xy / max(1.0, uDpr)) - 0.5) * 0.026 * uDitherStrength;
+            finalCol += vec3(d + tooth);
+          }
+
+          gl_FragColor = vec4(clamp(finalCol, 0.0, 1.0), 1.0);
+        }
+      `
+    };
+
+    const painterlyPass = new ShaderPass(PainterlyShader);
+    composer.addPass(painterlyPass);
+
+    // =========================================================================
+    // 10. CAMERA FOCUS INTERPOLATION & INTERACTION (Click/Poke, Orbit Inertia)
+    // =========================================================================
+    function getResponsiveDistScale() {
+      const aspect = window.innerWidth / window.innerHeight;
+      return aspect < 1.0 ? THREE.MathUtils.clamp(1.18 / aspect, 1.0, 1.52) : 1.0;
+    }
+
+    function getFocusPreset(mode) {
+      const s = getResponsiveDistScale();
+      if (mode === 'left') {
+        return {
+          pos: new THREE.Vector3(-1.35, 2.05, 4.45 * Math.min(s, 1.25)),
+          target: new THREE.Vector3(-1.26, 1.28, 0.08),
+        };
+      }
+      if (mode === 'right') {
+        return {
+          pos: new THREE.Vector3(1.38, 2.02, 4.40 * Math.min(s, 1.25)),
+          target: new THREE.Vector3(1.26, 1.28, -0.06),
+        };
+      }
+      return {
+        pos: new THREE.Vector3(0.0, 2.28, 6.85 * s),
+        target: new THREE.Vector3(0.0, 1.26, 0.0),
+      };
+    }
+
+    const camAnim = {
+      active: false,
+      destPos: new THREE.Vector3(),
+      destTarget: new THREE.Vector3(),
+    };
+
+    function focusCamera(mode) {
+      state.focusMode = mode;
+      const preset = getFocusPreset(mode);
+      camAnim.destPos.copy(preset.pos);
+      camAnim.destTarget.copy(preset.target);
+      camAnim.active = true;
+
+      document.querySelectorAll('.seg-btn[data-focus]').forEach((btn) => {
+        const isAct = btn.dataset.focus === mode;
+        btn.classList.toggle('active', isAct);
+        btn.setAttribute('aria-selected', String(isAct));
+      });
+    }
+
+    // Set responsive initial camera position immediately
+    const initialPreset = getFocusPreset('both');
+    camera.position.copy(initialPreset.pos);
+    controls.target.copy(initialPreset.target);
+    controls.update();
+
+    // Pointer interaction: distinguish crisp cup poke vs orbit drag, plus orbit inertia slosh
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const hitTargets = cups.map((c) => c.hitMesh);
+
+    let pointerDownPos = { x: 0, y: 0 };
+    let prevCamAzimuth = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+
+    function markInteracted() {
+      if (!state.hasInteracted) {
+        state.hasInteracted = true;
+        if (microHint) microHint.classList.add('faded');
+      }
+    }
+
+    function setNDC(e) {
+      const rect = canvas.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      markInteracted();
+      camAnim.active = false; // Yield immediately to user orbit
+      pointerDownPos.x = e.clientX;
+      pointerDownPos.y = e.clientY;
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      setNDC(e);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(hitTargets, false);
+      canvas.classList.toggle('hovering-cup', hits.length > 0);
+    });
+
+    canvas.addEventListener('pointerup', (e) => {
+      const travel = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (travel > 9) return; // Was an orbit drag, not a cup poke
+
+      setNDC(e);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(hitTargets, false);
+      if (hits.length > 0) {
+        const hitMesh = hits[0].object;
+        const cup = cups.find((c) => c.hitMesh === hitMesh);
+        if (cup) {
+          // Impulse in camera-view poke direction
+          const pushDir = new THREE.Vector3();
+          camera.getWorldDirection(pushDir);
+          const rightDir = new THREE.Vector3().crossVectors(pushDir, new THREE.Vector3(0, 1, 0)).normalize();
+          const randSide = (Math.random() - 0.5) * 1.4;
+          const ix = pushDir.x * 1.65 + rightDir.x * randSide;
+          const iz = pushDir.z * 1.65 + rightDir.z * randSide;
+          impulseCup(cup, ix, iz, -2.05);
+
+          // Tiny sympathy vibration to the neighboring cup
+          const other = cup === leftCup ? rightCup : leftCup;
+          setTimeout(() => impulseCup(other, ix * 0.22, iz * 0.22, -0.4), 75);
+        }
+      }
+    });
+
+    // =========================================================================
+    // 11. UI WIRING (Shader Studio, Camera Switcher, Shake & Painterly Toggle)
+    // =========================================================================
+    const btnStudioToggle = document.getElementById('btnStudioToggle');
+    const studioPanel = document.getElementById('studioPanel');
+    const sliderBrush = document.getElementById('sliderBrush');
+    const sliderNormals = document.getElementById('sliderNormals');
+    const sliderWobble = document.getElementById('sliderWobble');
+    const sliderDither = document.getElementById('sliderDither');
+    const valBrush = document.getElementById('valBrush');
+    const valNormals = document.getElementById('valNormals');
+    const valWobble = document.getElementById('valWobble');
+    const valDither = document.getElementById('valDither');
+    const switchPainterly = document.getElementById('switchPainterly');
+    const btnPainterlyQuick = document.getElementById('btnPainterlyQuick');
+    const btnShake = document.getElementById('btnShake');
+
+    btnStudioToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      markInteracted();
+      const isClosed = studioPanel.classList.toggle('panel-closed');
+      btnStudioToggle.setAttribute('aria-expanded', String(!isClosed));
+    });
+
+    // Close studio panel cleanly when clicking outside on the canvas
+    canvas.addEventListener('pointerdown', () => {
+      if (!studioPanel.classList.contains('panel-closed')) {
+        studioPanel.classList.add('panel-closed');
+        btnStudioToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    function syncPainterlyToggleUI() {
+      painterlyPass.enabled = state.painterlyEnabled;
+      bloomPass.strength = state.painterlyEnabled ? 0.20 : 0.14;
+      switchPainterly.setAttribute('aria-checked', String(state.painterlyEnabled));
+      btnPainterlyQuick.classList.toggle('active', state.painterlyEnabled);
+    }
+
+    sliderBrush.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      state.brushStrength = v / 100;
+      valBrush.textContent = `${v}%`;
+      painterlyPass.uniforms.uBrushStrength.value = state.brushStrength;
+    });
+
+    sliderNormals.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      state.normalStrength = v / 100;
+      valNormals.textContent = `${v}%`;
+      for (const mat of paintedNormalMats) {
+        const s = (mat.userData.baseNormalScale ?? 0.4) * state.normalStrength;
+        mat.normalScale.set(s, s);
+      }
+    });
+
+    sliderWobble.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      state.wobbleStrength = v / 100;
+      valWobble.textContent = `${v}%`;
+      for (const c of cups) {
+        c.physics.uStrength.value = state.wobbleStrength;
+      }
+    });
+
+    sliderDither.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      state.ditherStrength = v / 100;
+      valDither.textContent = `${v}%`;
+      painterlyPass.uniforms.uDitherStrength.value = state.ditherStrength;
+    });
+
+    function togglePainterly() {
+      markInteracted();
+      state.painterlyEnabled = !state.painterlyEnabled;
+      syncPainterlyToggleUI();
+    }
+
+    switchPainterly.addEventListener('click', togglePainterly);
+    btnPainterlyQuick.addEventListener('click', togglePainterly);
+
+    document.querySelectorAll('.seg-btn[data-focus]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        markInteracted();
+        focusCamera(btn.dataset.focus);
+      });
+    });
+
+    function triggerDualShake(intensity = 1.0) {
+      markInteracted();
+      btnShake.classList.remove('shake-pop');
+      void btnShake.offsetWidth;
+      btnShake.classList.add('shake-pop');
+
+      const angle1 = (Math.random() - 0.5) * 1.4;
+      impulseCup(leftCup, Math.cos(angle1) * 2.2 * intensity, Math.sin(angle1) * 1.8 * intensity, -2.2 * intensity);
+
+      // Realistic slight phase delay for the right matcha pudding cup
+      setTimeout(() => {
+        const angle2 = angle1 + 0.85;
+        impulseCup(rightCup, -Math.cos(angle2) * 2.35 * intensity, Math.sin(angle2) * 1.95 * intensity, -2.5 * intensity);
+      }, 95);
+    }
+
+    btnShake.addEventListener('click', () => triggerDualShake(1.0));
+
+    // =========================================================================
+    // 12. PHYSICS STEP & ANIMATION LOOP
+    // =========================================================================
+    function stepCupPhysics(cup, dt, elapsed) {
+      const p = cup.physics;
+      const strength = state.wobbleStrength;
+
+      // Primary spring oscillator (liquid + cheese foam)
+      const k = 58.0;
+      const damp = Math.exp(-3.1 * dt);
+      p.velX = (p.velX - p.wobbleX * k * dt) * damp;
+      p.velZ = (p.velZ - p.wobbleZ * k * dt) * damp;
+      p.wobbleX = THREE.MathUtils.clamp(p.wobbleX + p.velX * dt, -0.35, 0.35);
+      p.wobbleZ = THREE.MathUtils.clamp(p.wobbleZ + p.velZ * dt, -0.35, 0.35);
+
+      const kSq = 72.0;
+      const dampSq = Math.exp(-3.6 * dt);
+      p.squashVel = (p.squashVel - p.squash * kSq * dt) * dampSq;
+      p.squash = THREE.MathUtils.clamp(p.squash + p.squashVel * dt, -0.22, 0.24);
+
+      p.amplitude = Math.max(0.06, p.amplitude * Math.exp(-1.9 * dt));
+      p.phase += dt * (1.2 + p.amplitude * 1.4);
+
+      // Secondary spring oscillator (extra jiggly custard pudding!)
+      const pk = 44.0;
+      const pdamp = Math.exp(-2.15 * dt);
+      p.pVelX = (p.pVelX - p.pWobbleX * pk * dt) * pdamp;
+      p.pVelZ = (p.pVelZ - p.pWobbleZ * pk * dt) * pdamp;
+      p.pWobbleX = THREE.MathUtils.clamp(p.pWobbleX + p.pVelX * dt, -0.45, 0.45);
+      p.pWobbleZ = THREE.MathUtils.clamp(p.pWobbleZ + p.pVelZ * dt, -0.45, 0.45);
+
+      const pkSq = 54.0;
+      const pdampSq = Math.exp(-2.5 * dt);
+      p.pSquashVel = (p.pSquashVel - p.pSquash * pkSq * dt) * pdampSq;
+      p.pSquash = THREE.MathUtils.clamp(p.pSquash + p.pSquashVel * dt, -0.28, 0.30);
+      p.pAmplitude = Math.max(0.08, p.pAmplitude * Math.exp(-1.55 * dt));
+
+      // Cup tilt recoil around tabletop base
+      const tk = 82.0;
+      const tdamp = Math.exp(-5.4 * dt);
+      p.tiltVelX = (p.tiltVelX - p.tiltX * tk * dt) * tdamp;
+      p.tiltVelZ = (p.tiltVelZ - p.tiltZ * tk * dt) * tdamp;
+      p.tiltX = THREE.MathUtils.clamp(p.tiltX + p.tiltVelX * dt, -0.09, 0.09);
+      p.tiltZ = THREE.MathUtils.clamp(p.tiltZ + p.tiltVelZ * dt, -0.09, 0.09);
+
+      cup.root.rotation.x = p.tiltX;
+      cup.root.rotation.z = p.tiltZ;
+
+      // Update vertex shader uniforms
+      p.uWobble.value.set(p.wobbleX, p.wobbleZ);
+      p.uSquash.value = p.squash;
+      p.uPhase.value = p.phase;
+      p.uAmplitude.value = p.amplitude;
+      p.uStrength.value = strength;
+
+      p.uPuddingWobble.value.set(p.pWobbleX, p.pWobbleZ);
+      p.uPuddingSquash.value = p.pSquash;
+      p.uPuddingAmp.value = p.pAmplitude;
+
+      // Gentle bobbing & sloshing of ice cubes
+      for (const ic of cup.iceItems) {
+        const bob = Math.sin(elapsed * 1.9 + ic.phase) * 0.014 + p.squash * 0.18 * strength;
+        ic.mesh.position.x = ic.base.x + p.wobbleX * 0.36 * strength;
+        ic.mesh.position.y = ic.base.y + bob;
+        ic.mesh.position.z = ic.base.z + p.wobbleZ * 0.36 * strength;
+        ic.mesh.rotation.x = ic.base.rx + p.wobbleZ * 0.65 * strength + Math.sin(elapsed * 1.3 + ic.phase) * 0.04;
+        ic.mesh.rotation.z = ic.base.rz - p.wobbleX * 0.65 * strength + Math.cos(elapsed * 1.1 + ic.phase) * 0.04;
+      }
+
+      // Subtle boba pearl sway at cup bottom
+      for (const pm of cup.pearlMeshes) {
+        const hF = THREE.MathUtils.clamp((pm.base.y - 0.14) / 1.4, 0.04, 0.6);
+        pm.mesh.position.x = pm.base.x + p.wobbleX * hF * 0.25 * strength;
+        pm.mesh.position.z = pm.base.z + p.wobbleZ * hF * 0.25 * strength;
+        pm.mesh.position.y = pm.base.y + p.squash * hF * 0.14 * strength;
+      }
+
+      // Left cup top cheese-foam pearls ride the wobbling foam dome
+      for (const tp of cup.topPearls) {
+        tp.mesh.position.x = tp.base.x + p.wobbleX * 1.25 * strength;
+        tp.mesh.position.z = tp.base.z + p.wobbleZ * 1.25 * strength;
+        tp.mesh.position.y = tp.base.y + p.squash * 0.68 * strength;
+      }
+
+      // Right cup pudding base subtle float & tilt synchronization
+      if (cup.puddingGroup) {
+        cup.puddingGroup.position.x = cup.basePuddingPos.x + p.wobbleX * 0.45 * strength;
+        cup.puddingGroup.position.z = cup.basePuddingPos.z + p.wobbleZ * 0.45 * strength;
+        cup.puddingGroup.position.y = cup.basePuddingPos.y + p.squash * 0.24 * strength + Math.sin(elapsed * 1.8) * 0.008;
+        cup.puddingGroup.rotation.z = cup.basePuddingRot.z - p.pWobbleX * 0.28 * strength;
+        cup.puddingGroup.rotation.x = cup.basePuddingRot.x + p.pWobbleZ * 0.28 * strength;
+      }
+
+      // Subtle straw sway reacting to liquid slosh
+      cup.straw.rotation.z = cup.baseStrawRot.z - p.wobbleX * 0.14 * strength;
+      cup.straw.rotation.x = cup.baseStrawRot.x + p.wobbleZ * 0.14 * strength;
+    }
+
+    // Resize handler (crisp HiDPI + zero scrollbars)
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(w, h);
+      composer.setPixelRatio(dpr);
+      composer.setSize(w, h);
+
+      painterlyPass.uniforms.uResolution.value.set(w * dpr, h * dpr);
+      painterlyPass.uniforms.uDpr.value = dpr;
+    }
+    window.addEventListener('resize', onResize);
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.033);
+      const elapsed = clock.elapsedTime;
+
+      // Smooth focus camera transition
+      if (camAnim.active) {
+        const ease = 1.0 - Math.exp(-5.5 * dt);
+        camera.position.lerp(camAnim.destPos, ease);
+        controls.target.lerp(camAnim.destTarget, ease);
+        if (camera.position.distanceTo(camAnim.destPos) < 0.012 && controls.target.distanceTo(camAnim.destTarget) < 0.012) {
+          camAnim.active = false;
+        }
+      }
+
+      controls.update();
+
+      // Convert fast orbit dragging inertia into gentle organic liquid slosh!
+      const currAzimuth = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+      let dAz = currAzimuth - prevCamAzimuth;
+      if (dAz > Math.PI) dAz -= Math.PI * 2;
+      if (dAz < -Math.PI) dAz += Math.PI * 2;
+      prevCamAzimuth = currAzimuth;
+
+      if (Math.abs(dAz) > 0.008 && !camAnim.active) {
+        const slosh = THREE.MathUtils.clamp(dAz * 7.5, -1.2, 1.2);
+        for (const c of cups) {
+          c.physics.velX += slosh * 0.24;
+          c.physics.pVelX += slosh * 0.36;
+          c.physics.amplitude = Math.min(1.4, c.physics.amplitude + Math.abs(slosh) * 0.14);
+          c.physics.pAmplitude = Math.min(1.6, c.physics.pAmplitude + Math.abs(slosh) * 0.18);
+        }
+      }
+
+      // Step physics for both cups
+      stepCupPhysics(leftCup, dt, elapsed);
+      stepCupPhysics(rightCup, dt, elapsed);
+
+      // Update tabletop dappled sunlight & cup caustic wobble
+      causticsUniforms.uTime.value = elapsed;
+      causticsUniforms.uLeftWobble.value.set(leftCup.physics.wobbleX, leftCup.physics.wobbleZ);
+      causticsUniforms.uRightWobble.value.set(rightCup.physics.wobbleX, rightCup.physics.wobbleZ);
+
+      composer.render();
+    }
+
+    // Start smoothly on window load with a gentle welcoming wobble
+    window.addEventListener('load', () => {
+      syncPainterlyToggleUI();
+      animate();
+      setTimeout(() => {
+        impulseCup(leftCup, 1.25, 0.55, -1.35);
+        setTimeout(() => {
+          impulseCup(rightCup, -1.35, 0.72, -1.85);
+        }, 140);
+      }, 360);
+    });
+  </script>
+</body>
+</html>
