@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>鳄鱼骑自行车 · 离线 SVG 动画</title>
+  <style>
+    :root {
+      --bg-page: #f4f1e8;
+      --card-bg: #fffdf8;
+      --ink: #223029;
+      --muted: #5d6f65;
+      --accent: #2f855a;
+      --accent-hover: #246b47;
+      --coral: #e0533c;
+      --border: #e2dccd;
+      --pill-bg: #f1ede2;
+      --shadow: 0 18px 45px rgba(34, 48, 41, 0.11);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 15% 15%, #fbf7eb 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, #e5efe4 0%, transparent 48%),
+        var(--bg-page);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 980px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #fffefb 0%, #faf6ec 100%);
+      flex-wrap: wrap;
+    }
+
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(47, 133, 90, 0.16);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 4px;
+      font-weight: 500;
+    }
+
+    .telemetry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-pill strong {
+      font-size: 14px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .stage-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #cbe8f6;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    svg#scene {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .controls {
+      padding: 18px 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #fffdf8;
+      border-top: 1px solid var(--border);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 15px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #f7f4eb;
+      border-color: #cfc6b2;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      min-width: 96px;
+      justify-content: center;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-bell {
+      background: #fff7e6;
+      border-color: #eccb83;
+      color: #8c5a08;
+    }
+
+    .btn-bell:hover {
+      background: #ffefc8;
+      border-color: #dfb456;
+    }
+
+    .slider-group {
+      flex: 1 1 260px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 8px 14px;
+    }
+
+    .slider-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #a7d9b8 0%, #3ca36d 55%, #e0533c 100%);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--accent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.12s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--accent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .speed-val {
+      min-width: 48px;
+      text-align: right;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .presets {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .preset-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 999px;
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      background: #e9e3d3;
+      color: var(--ink);
+    }
+
+    .preset-btn.active {
+      background: #dff2e6;
+      border-color: #7cc098;
+      color: #1f603f;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--pill-bg);
+      border: 1px solid #d5cebe;
+      border-radius: 5px;
+      color: var(--ink);
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 10px;
+      }
+      .header, .controls {
+        padding: 14px;
+      }
+      .subtitle {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="title-wrap">
+        <span class="badge-dot" aria-hidden="true"></span>
+        <h1>鳄鱼骑自行车 <span class="subtitle">纯离线 SVG 矢量联动动画</span></h1>
+      </div>
+      <div class="telemetry" aria-live="polite">
+        <span class="stat-pill">速度 <strong id="kmhDisplay">16.0</strong> km/h</span>
+        <span class="stat-pill">踏频 <strong id="rpmDisplay">60</strong> RPM</span>
+      </div>
+    </header>
+
+    <section class="stage-wrap" aria-label="鳄鱼骑自行车 SVG 动画舞台">
+      <svg id="scene" viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="一只快乐的鳄鱼正在阳光公园小道上骑自行车">
+        <defs>
+          <!-- Sky & Atmosphere -->
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#87cde8" />
+            <stop offset="56%" stop-color="#cdebf5" />
+            <stop offset="100%" stop-color="#f7f2dc" />
+          </linearGradient>
+
+          <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fff4b8" stop-opacity="0.95" />
+            <stop offset="45%" stop-color="#ffe27a" stop-opacity="0.45" />
+            <stop offset="100%" stop-color="#ffe27a" stop-opacity="0" />
+          </radialGradient>
+
+          <linearGradient id="farHillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#9cc6a4" />
+            <stop offset="100%" stop-color="#7cae88" />
+          </linearGradient>
+
+          <linearGradient id="nearHillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#79b37c" />
+            <stop offset="100%" stop-color="#5b9661" />
+          </linearGradient>
+
+          <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#606a70" />
+            <stop offset="18%" stop-color="#515a60" />
+            <stop offset="100%" stop-color="#3e464b" />
+          </linearGradient>
+
+          <linearGradient id="grassEdgeGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#73b464" />
+            <stop offset="100%" stop-color="#4e8c45" />
+          </linearGradient>
+
+          <!-- Bicycle Colors -->
+          <linearGradient id="frameGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#f16b51" />
+            <stop offset="55%" stop-color="#d94a34" />
+            <stop offset="100%" stop-color="#b33422" />
+          </linearGradient>
+
+          <linearGradient id="rimGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#eef3f5" />
+            <stop offset="50%" stop-color="#b8c4ca" />
+            <stop offset="100%" stop-color="#8b99a1" />
+          </linearGradient>
+
+          <linearGradient id="saddleGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7a4c32" />
+            <stop offset="100%" stop-color="#4d2e1c" />
+          </linearGradient>
+
+          <!-- Crocodile Colors -->
+          <linearGradient id="crocBodyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#58a85c" />
+            <stop offset="55%" stop-color="#3f8c47" />
+            <stop offset="100%" stop-color="#2f7038" />
+          </linearGradient>
+
+          <linearGradient id="crocDarkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#397c40" />
+            <stop offset="100%" stop-color="#25582c" />
+          </linearGradient>
+
+          <linearGradient id="crocBellyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#eef2b8" />
+            <stop offset="100%" stop-color="#cfe08d" />
+          </linearGradient>
+
+          <linearGradient id="scuteGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2c6934" />
+            <stop offset="100%" stop-color="#1e4d25" />
+          </linearGradient>
+
+          <linearGradient id="scarfGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#f2b830" />
+            <stop offset="50%" stop-color="#e88d25" />
+            <stop offset="100%" stop-color="#d85f27" />
+          </linearGradient>
+
+          <clipPath id="stageClip">
+            <rect x="0" y="0" width="960" height="540" />
+          </clipPath>
+        </defs>
+
+        <g clip-path="url(#stageClip)">
+          <!-- 1. Sky -->
+          <rect x="0" y="0" width="960" height="420" fill="url(#skyGrad)" />
+
+          <!-- Sun -->
+          <g transform="translate(805, 86)">
+            <circle cx="0" cy="0" r="88" fill="url(#sunGlow)" />
+            <g id="sunRays" opacity="0.55">
+              <line x1="0" y1="-52" x2="0" y2="-66" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="0" y1="52" x2="0" y2="66" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="-52" y1="0" x2="-66" y2="0" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="52" y1="0" x2="66" y2="0" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="-37" y1="-37" x2="-47" y2="-47" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="37" y1="-37" x2="47" y2="-47" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="-37" y1="37" x2="-47" y2="47" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+              <line x1="37" y1="37" x2="47" y2="47" stroke="#ffdf6e" stroke-width="4" stroke-linecap="round" />
+            </g>
+            <circle cx="0" cy="0" r="36" fill="#ffe785" />
+            <circle cx="-6" cy="-6" r="24" fill="#fff4bd" opacity="0.65" />
+          </g>
+
+          <!-- 2. Parallax Clouds (tile width: 960) -->
+          <g id="cloudLayer">
+            <g id="cloudTileA">
+              <g transform="translate(110, 74)" fill="#ffffff" opacity="0.88">
+                <ellipse cx="0" cy="14" rx="44" ry="15" />
+                <circle cx="-18" cy="4" r="18" />
+                <circle cx="8" cy="-2" r="23" />
+                <circle cx="28" cy="8" r="14" />
+              </g>
+              <g transform="translate(450, 56)" fill="#ffffff" opacity="0.82">
+                <ellipse cx="0" cy="12" rx="54" ry="16" />
+                <circle cx="-24" cy="2" r="20" />
+                <circle cx="6" cy="-4" r="25" />
+                <circle cx="32" cy="6" r="16" />
+              </g>
+              <g transform="translate(745, 118)" fill="#ffffff" opacity="0.72">
+                <ellipse cx="0" cy="10" rx="34" ry="11" />
+                <circle cx="-12" cy="2" r="13" />
+                <circle cx="10" cy="0" r="16" />
+              </g>
+            </g>
+            <use href="#cloudTileA" x="960" y="0" />
+          </g>
+
+          <!-- 3. Far Hills (tile width: 960) -->
+          <g id="farHillLayer">
+            <g id="farHillTileA">
+              <path d="M 0 385 L 0 296 Q 120 236 240 282 T 480 278 T 720 256 T 960 296 L 960 385 Z" fill="url(#farHillGrad)" />
+            </g>
+            <use href="#farHillTileA" x="960" y="0" />
+          </g>
+
+          <!-- 4. Near Hills & Park Trees (tile width: 960) -->
+          <g id="midLayer">
+            <g id="midTileA">
+              <path d="M 0 405 L 0 338 Q 160 295 320 332 T 640 326 T 960 338 L 960 405 Z" fill="url(#nearHillGrad)" />
+
+              <!-- Tree 1 -->
+              <g transform="translate(128, 326)">
+                <rect x="-5" y="18" width="10" height="44" rx="3" fill="#7c563a" />
+                <circle cx="0" cy="-6" r="28" fill="#4f9959" />
+                <circle cx="-17" cy="8" r="20" fill="#44894e" />
+                <circle cx="18" cy="10" r="19" fill="#5da866" />
+              </g>
+
+              <!-- Tree 2 (Cypress pair) -->
+              <g transform="translate(345, 322)">
+                <rect x="-3" y="24" width="6" height="32" fill="#785237" />
+                <ellipse cx="0" cy="0" rx="14" ry="34" fill="#3c7f49" />
+                <ellipse cx="22" cy="10" rx="11" ry="26" fill="#4a9155" />
+                <rect x="19" y="28" width="5" height="26" fill="#785237" />
+              </g>
+
+              <!-- Tree 3 -->
+              <g transform="translate(595, 320)">
+                <rect x="-6" y="20" width="12" height="46" rx="3" fill="#754f34" />
+                <circle cx="0" cy="-10" r="32" fill="#499453" />
+                <circle cx="-22" cy="8" r="22" fill="#3f8549" />
+                <circle cx="21" cy="7" r="23" fill="#5aa864" />
+              </g>
+
+              <!-- Tree 4 -->
+              <g transform="translate(838, 330)">
+                <rect x="-5" y="16" width="10" height="42" rx="3" fill="#7c563a" />
+                <circle cx="0" cy="-4" r="25" fill="#529e5c" />
+                <circle cx="-16" cy="9" r="17" fill="#448a4f" />
+                <circle cx="16" cy="10" r="16" fill="#62ae6b" />
+              </g>
+
+              <!-- Park Bushes -->
+              <g fill="#458a4f">
+                <ellipse cx="236" cy="382" rx="36" ry="16" />
+                <ellipse cx="262" cy="384" rx="22" ry="12" fill="#549d5d" />
+                <ellipse cx="485" cy="383" rx="42" ry="15" />
+                <ellipse cx="732" cy="382" rx="34" ry="14" fill="#549d5d" />
+              </g>
+
+              <!-- Wooden Park Fence Rail -->
+              <g opacity="0.72" fill="#c9ae82" stroke="#9e8258" stroke-width="1.2">
+                <rect x="0" y="365" width="960" height="4.5" />
+                <rect x="0" y="378" width="960" height="4.5" />
+                <rect x="40" y="357" width="7" height="36" rx="2" />
+                <rect x="160" y="357" width="7" height="36" rx="2" />
+                <rect x="280" y="357" width="7" height="36" rx="2" />
+                <rect x="400" y="357" width="7" height="36" rx="2" />
+                <rect x="520" y="357" width="7" height="36" rx="2" />
+                <rect x="640" y="357" width="7" height="36" rx="2" />
+                <rect x="760" y="357" width="7" height="36" rx="2" />
+                <rect x="880" y="357" width="7" height="36" rx="2" />
+              </g>
+            </g>
+            <use href="#midTileA" x="960" y="0" />
+          </g>
+
+          <!-- 5. Road & Foreground Grass -->
+          <rect x="0" y="388" width="960" height="18" fill="url(#grassEdgeGrad)" />
+          <rect x="0" y="404" width="960" height="96" fill="url(#roadGrad)" />
+          <rect x="0" y="404" width="960" height="4" fill="#cfd6cf" opacity="0.7" />
+          <rect x="0" y="496" width="960" height="44" fill="url(#grassEdgeGrad)" />
+          <rect x="0" y="496" width="960" height="4" fill="#9bd087" opacity="0.55" />
+
+          <!-- Scrolling Road Markings & Ground Pebbles (1:1 wheel speed, tile width: 240) -->
+          <g id="roadLayer">
+            <g id="roadTileA">
+              <rect x="20" y="446" width="66" height="7" rx="3.5" fill="#f3e9b8" opacity="0.82" />
+              <rect x="140" y="446" width="66" height="7" rx="3.5" fill="#f3e9b8" opacity="0.82" />
+              <!-- Subtle asphalt texture -->
+              <ellipse cx="64" cy="422" rx="7" ry="2.2" fill="#3a4146" opacity="0.45" />
+              <ellipse cx="182" cy="472" rx="10" ry="2.5" fill="#3a4146" opacity="0.4" />
+              <circle cx="112" cy="466" r="2" fill="#77828a" opacity="0.55" />
+              <circle cx="218" cy="428" r="1.8" fill="#77828a" opacity="0.5" />
+              <!-- Foreground grass tufts -->
+              <path d="M 35 516 l -4 -10 l 6 7 l 3 -9 l 2 10 l 5 -7 l -3 9 z" fill="#3f7c37" opacity="0.7" />
+              <path d="M 164 524 l -4 -9 l 5 6 l 3 -10 l 3 10 l 5 -6 l -3 9 z" fill="#3f7c37" opacity="0.65" />
+              <!-- Small daisy -->
+              <g transform="translate(106, 514)">
+                <circle cx="0" cy="0" r="4" fill="#ffffff" />
+                <circle cx="0" cy="0" r="1.7" fill="#f5c63b" />
+              </g>
+            </g>
+            <use href="#roadTileA" x="240" y="0" />
+            <use href="#roadTileA" x="480" y="0" />
+            <use href="#roadTileA" x="720" y="0" />
+            <use href="#roadTileA" x="960" y="0" />
+          </g>
+
+          <!-- Wind Streaks (visible at higher speeds) -->
+          <g id="windLines" opacity="0" stroke="#ffffff" stroke-linecap="round" fill="none">
+            <line id="wind1" x1="0" y1="145" x2="110" y2="145" stroke-width="2.6" opacity="0.7" />
+            <line id="wind2" x1="0" y1="108" x2="88" y2="108" stroke-width="2" opacity="0.55" />
+            <line id="wind3" x1="0" y1="224" x2="124" y2="224" stroke-width="2.4" opacity="0.65" />
+            <line id="wind4" x1="0" y1="302" x2="82" y2="302" stroke-width="2" opacity="0.5" />
+          </g>
+
+          <!-- 6. Ground Shadow under Bike & Crocodile -->
+          <ellipse id="groundShadow" cx="468" cy="441" rx="205" ry="13" fill="#232c2f" opacity="0.34" />
+
+          <!-- ==================== HERO: CROCODILE + BICYCLE ==================== -->
+          <g id="heroRig">
+
+            <!-- LAYER A: FAR LEG (Left Crocodile Leg, behind bike frame) -->
+            <g id="farLegGroup">
+              <path id="farThigh" d="" fill="none" stroke="#2d6b35" stroke-width="25" stroke-linecap="round" />
+              <path id="farCalf" d="" fill="none" stroke="#2a6431" stroke-width="19" stroke-linecap="round" />
+              <circle id="farKneeCap" cx="0" cy="0" r="11" fill="#2d6b35" />
+              <g id="farFoot">
+                <path d="M -12 4 C -10 -7 6 -9 22 -4 C 31 -1 35 4 33 8 C 30 12 10 12 -10 10 C -13 9 -14 6 -12 4 Z" fill="#275c2e" stroke="#1c4321" stroke-width="1.5" />
+                <path d="M 27 1 l 6 2 m -5 3 l 6 1" stroke="#dce6ba" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+
+            <!-- LAYER B: FAR CRANK & FAR PEDAL -->
+            <g id="farCrankGroup">
+              <line id="farCrankArm" x1="452" y1="374" x2="418" y2="374" stroke="#6f7c82" stroke-width="7" stroke-linecap="round" />
+              <g id="farPedal">
+                <rect x="-16" y="-4" width="32" height="8" rx="3" fill="#2f373b" stroke="#1d2326" stroke-width="1.2" />
+                <rect x="-10" y="-1.5" width="20" height="3" rx="1.5" fill="#d98c2b" opacity="0.85" />
+              </g>
+            </g>
+
+            <!-- LAYER C: FAR ARM (Left Arm holding far handlebar grip) -->
+            <g id="farArmGroup">
+              <path id="farUpperArm" d="" fill="none" stroke="#2e6d36" stroke-width="17" stroke-linecap="round" />
+              <path id="farForeArm" d="" fill="none" stroke="#2a6431" stroke-width="14" stroke-linecap="round" />
+              <circle id="farHand" cx="539" cy="212" r="8" fill="#285e2f" />
+            </g>
+
+            <!-- LAYER D: BICYCLE WHEELS & DRIVETRAIN -->
+            <g id="rearWheelAnchor" transform="translate(345, 374)">
+              <g id="rearWheelSpin">
+                <!-- Tire -->
+                <circle cx="0" cy="0" r="61" fill="none" stroke="#262c30" stroke-width="12" />
+                <!-- Tire tread notches -->
+                <circle cx="0" cy="0" r="65.5" fill="none" stroke="#1b2023" stroke-width="3" stroke-dasharray="6 11" />
+                <!-- Rim -->
+                <circle cx="0" cy="0" r="53.5" fill="none" stroke="url(#rimGrad)" stroke-width="4.5" />
+                <circle cx="0" cy="0" r="50.5" fill="none" stroke="#6e7c84" stroke-width="1.2" />
+                <!-- Spokes (12) -->
+                <g stroke="#d5dfe4" stroke-width="1.7" opacity="0.92">
+                  <line x1="0" y1="-50" x2="0" y2="50" />
+                  <line x1="-50" y1="0" x2="50" y2="0" />
+                  <line x1="-35.4" y1="-35.4" x2="35.4" y2="35.4" />
+                  <line x1="35.4" y1="-35.4" x2="-35.4" y2="35.4" />
+                  <line x1="-25" y1="-43.3" x2="25" y2="43.3" />
+                  <line x1="25" y1="-43.3" x2="-25" y2="43.3" />
+                  <line x1="-43.3" y1="-25" x2="43.3" y2="25" />
+                  <line x1="43.3" y1="-25" x2="-43.3" y2="25" />
+                </g>
+                <!-- Spoke Reflector & Air Valve for clear rotation readout -->
+                <rect x="-4" y="-44" width="8" height="13" rx="3" fill="#f5a623" stroke="#b86c08" stroke-width="1" />
+                <rect x="-2" y="42" width="4" height="9" rx="1" fill="#404a4f" />
+                <!-- Rear Cassette Cog -->
+                <circle cx="0" cy="0" r="14" fill="#637077" stroke="#3c464b" stroke-width="2" stroke-dasharray="3.5 2.5" />
+                <circle cx="0" cy="0" r="9.5" fill="#9aa7ae" stroke="#4b565c" stroke-width="1.5" />
+                <circle cx="0" cy="0" r="4" fill="#323a3e" />
+              </g>
+            </g>
+
+            <g id="frontWheelAnchor" transform="translate(605, 374)">
+              <g id="frontWheelSpin">
+                <circle cx="0" cy="0" r="61" fill="none" stroke="#262c30" stroke-width="12" />
+                <circle cx="0" cy="0" r="65.5" fill="none" stroke="#1b2023" stroke-width="3" stroke-dasharray="6 11" />
+                <circle cx="0" cy="0" r="53.5" fill="none" stroke="url(#rimGrad)" stroke-width="4.5" />
+                <circle cx="0" cy="0" r="50.5" fill="none" stroke="#6e7c84" stroke-width="1.2" />
+                <g stroke="#d5dfe4" stroke-width="1.7" opacity="0.92">
+                  <line x1="0" y1="-50" x2="0" y2="50" />
+                  <line x1="-50" y1="0" x2="50" y2="0" />
+                  <line x1="-35.4" y1="-35.4" x2="35.4" y2="35.4" />
+                  <line x1="35.4" y1="-35.4" x2="-35.4" y2="35.4" />
+                  <line x1="-25" y1="-43.3" x2="25" y2="43.3" />
+                  <line x1="25" y1="-43.3" x2="-25" y2="43.3" />
+                  <line x1="-43.3" y1="-25" x2="43.3" y2="25" />
+                  <line x1="43.3" y1="-25" x2="-43.3" y2="25" />
+                </g>
+                <rect x="-4" y="-44" width="8" height="13" rx="3" fill="#f5a623" stroke="#b86c08" stroke-width="1" />
+                <rect x="-2" y="42" width="4" height="9" rx="1" fill="#404a4f" />
+                <circle cx="0" cy="0" r="9" fill="#9aa7ae" stroke="#4b565c" stroke-width="1.5" />
+                <circle cx="0" cy="0" r="4" fill="#323a3e" />
+              </g>
+            </g>
+
+            <!-- Bicycle Chain -->
+            <g id="bikeChain">
+              <path d="M 345 360 L 452 349 A 25 25 0 0 1 452 399 L 345 388 A 14 14 0 0 1 345 360 Z" fill="none" stroke="#30383c" stroke-width="4.5" stroke-linejoin="round" />
+              <path id="chainLinks" d="M 345 360 L 452 349 A 25 25 0 0 1 452 399 L 345 388 A 14 14 0 0 1 345 360 Z" fill="none" stroke="#9aa8b0" stroke-width="2.2" stroke-dasharray="5 5" stroke-linecap="round" />
+            </g>
+
+            <!-- LAYER E: BICYCLE FENDERS & FRAME -->
+            <g id="bikeFrame">
+              <!-- Curved Fenders -->
+              <path d="M 281 356 A 70 70 0 0 1 399 327" fill="none" stroke="#c83f2b" stroke-width="7.5" stroke-linecap="round" />
+              <path d="M 281 356 A 70 70 0 0 1 399 327" fill="none" stroke="#f58a74" stroke-width="2" stroke-linecap="round" opacity="0.65" />
+              <path d="M 547 331 A 70 70 0 0 1 669 349" fill="none" stroke="#c83f2b" stroke-width="7.5" stroke-linecap="round" />
+              <path d="M 547 331 A 70 70 0 0 1 669 349" fill="none" stroke="#f58a74" stroke-width="2" stroke-linecap="round" opacity="0.65" />
+
+              <!-- Fender Stays -->
+              <line x1="345" y1="374" x2="294" y2="338" stroke="#95a3aa" stroke-width="2" />
+              <line x1="605" y1="374" x2="652" y2="336" stroke="#95a3aa" stroke-width="2" />
+
+              <!-- Rear Rack Accent -->
+              <path d="M 345 374 L 306 297 L 395 297" fill="none" stroke="#485359" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+              <line x1="345" y1="374" x2="352" y2="297" stroke="#485359" stroke-width="2.5" />
+
+              <!-- Rear Triangle (Chainstay & Seatstay) -->
+              <line x1="345" y1="374" x2="452" y2="374" stroke="url(#frameGrad)" stroke-width="7.5" stroke-linecap="round" />
+              <line x1="345" y1="374" x2="412" y2="269" stroke="url(#frameGrad)" stroke-width="6.5" stroke-linecap="round" />
+
+              <!-- Main Diamond Tubes -->
+              <line x1="452" y1="374" x2="408" y2="258" stroke="url(#frameGrad)" stroke-width="9.5" stroke-linecap="round" />
+              <line x1="452" y1="374" x2="559" y2="280" stroke="url(#frameGrad)" stroke-width="10.5" stroke-linecap="round" />
+              <line x1="413" y1="271" x2="551" y2="259" stroke="url(#frameGrad)" stroke-width="8.5" stroke-linecap="round" />
+
+              <!-- Head Tube & Front Fork -->
+              <line x1="548" y1="246" x2="564" y2="290" stroke="#b93724" stroke-width="12" stroke-linecap="round" />
+              <path d="M 561 285 Q 577 328 605 374" fill="none" stroke="url(#frameGrad)" stroke-width="8.5" stroke-linecap="round" />
+              <!-- Axle Nuts -->
+              <circle cx="345" cy="374" r="5" fill="#d8e0e4" stroke="#3c464b" stroke-width="1.5" />
+              <circle cx="605" cy="374" r="5" fill="#d8e0e4" stroke="#3c464b" stroke-width="1.5" />
+
+              <!-- Retro Front Headlight -->
+              <g transform="translate(579, 286) rotate(-10)">
+                <path d="M -8 -7 L 11 -10 C 16 -10 19 -5 19 0 C 19 5 16 10 11 10 L -8 7 Z" fill="#d9dfe3" stroke="#536066" stroke-width="1.8" />
+                <ellipse cx="15" cy="0" rx="3.2" ry="8" fill="#fff6bd" stroke="#d1b554" stroke-width="1" />
+              </g>
+
+              <!-- Seatpost & Vintage Leather Saddle -->
+              <line x1="408" y1="258" x2="402" y2="243" stroke="#b8c4ca" stroke-width="7" stroke-linecap="round" />
+              <path d="M 374 242 C 378 232 418 233 434 240 C 440 243 437 249 427 249 L 383 250 C 374 250 371 246 374 242 Z" fill="url(#saddleGrad)" stroke="#382012" stroke-width="1.6" />
+              <!-- Saddle springs -->
+              <path d="M 386 250 q 3 5 0 9 M 394 250 q 3 5 0 9" fill="none" stroke="#9eaab0" stroke-width="2" />
+
+              <!-- Handlebar Stem & Cruiser Bar -->
+              <path d="M 548 246 L 540 218 Q 537 209 524 211 L 516 213" fill="none" stroke="#b8c4ca" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
+              <!-- Far Grip -->
+              <path d="M 542 213 L 528 211" stroke="#4f3321" stroke-width="9" stroke-linecap="round" />
+              <!-- Brass Bicycle Bell -->
+              <g id="bikeBell" transform="translate(543, 212)">
+                <path d="M -7 0 A 7 7 0 0 1 7 0 Z" fill="#f0c14b" stroke="#996d12" stroke-width="1.4" />
+                <circle cx="0" cy="-7" r="1.6" fill="#996d12" />
+                <!-- Visual ring waves -->
+                <g id="bellWaves" opacity="0" stroke="#f0a51a" stroke-width="2.2" fill="none" stroke-linecap="round">
+                  <path d="M -11 -8 A 14 14 0 0 1 11 -8" />
+                  <path d="M -16 -13 A 21 21 0 0 1 16 -13" />
+                </g>
+              </g>
+              <!-- Near Grip -->
+              <path d="M 535 216 L 516 218" stroke="#613e28" stroke-width="10.5" stroke-linecap="round" />
+
+              <!-- Front Chainring (rotates with crank) -->
+              <g id="chainringAnchor" transform="translate(452, 374)">
+                <g id="chainringSpin">
+                  <circle cx="0" cy="0" r="25" fill="#9daab1" stroke="#48545a" stroke-width="2.4" stroke-dasharray="4.5 2.5" />
+                  <circle cx="0" cy="0" r="21" fill="#c7d2d7" stroke="#5c6970" stroke-width="1.5" />
+                  <!-- 5 Spider Cutouts -->
+                  <circle cx="0" cy="-12" r="4.5" fill="#515a60" opacity="0.65" />
+                  <circle cx="11.4" cy="-3.7" r="4.5" fill="#515a60" opacity="0.65" />
+                  <circle cx="7" cy="9.7" r="4.5" fill="#515a60" opacity="0.65" />
+                  <circle cx="-7" cy="9.7" r="4.5" fill="#515a60" opacity="0.65" />
+                  <circle cx="-11.4" cy="-3.7" r="4.5" fill="#515a60" opacity="0.65" />
+                  <circle cx="0" cy="0" r="6" fill="#59666d" stroke="#2f383d" stroke-width="1.5" />
+                </g>
+              </g>
+            </g>
+
+            <!-- LAYER F: CROCODILE TAIL (Dynamic Multi-Segment Animated Path) -->
+            <g id="crocTailGroup">
+              <g id="tailScutes"></g>
+              <path id="tailBodyPath" d="" fill="url(#crocBodyGrad)" stroke="#1e4b25" stroke-width="2.2" stroke-linejoin="round" />
+              <path id="tailBellyPath" d="" fill="url(#crocBellyGrad)" opacity="0.92" />
+              <g id="tailStripes" stroke="#2d6e35" stroke-width="2" stroke-linecap="round" opacity="0.45"></g>
+            </g>
+
+            <!-- LAYER G: CROCODILE TORSO, HEAD & FLUTTERING SCARF -->
+            <g id="crocUpperBody">
+              <!-- Back Dorsal Scutes -->
+              <g fill="url(#scuteGrad)" stroke="#1b4321" stroke-width="1.4" stroke-linejoin="round">
+                <path d="M 389 235 L 383 220 L 402 223 Z" />
+                <path d="M 402 223 L 399 207 L 417 212 Z" />
+                <path d="M 416 211 L 416 195 L 433 201 Z" />
+                <path d="M 432 200 L 434 184 L 449 191 Z" />
+                <path d="M 448 189 L 452 175 L 465 182 Z" />
+              </g>
+
+              <!-- Torso & Neck -->
+              <path d="M 382 246
+                       C 380 218 410 198 448 184
+                       C 464 178 480 176 492 184
+                       C 503 192 505 215 493 231
+                       C 478 250 451 268 418 269
+                       C 394 270 383 261 382 246 Z"
+                    fill="url(#crocBodyGrad)" stroke="#1e4b25" stroke-width="2.3" />
+
+              <!-- Segmented Pale Belly -->
+              <path d="M 414 267
+                       C 444 267 475 249 489 229
+                       C 497 217 497 203 490 195
+                       C 482 213 463 235 435 247
+                       C 420 253 408 257 402 263
+                       C 406 266 410 267 414 267 Z"
+                    fill="url(#crocBellyGrad)" />
+              <g stroke="#8fb36b" stroke-width="1.6" stroke-linecap="round" opacity="0.75">
+                <path d="M 426 252 Q 434 257 439 262" />
+                <path d="M 444 244 Q 452 250 457 254" />
+                <path d="M 461 233 Q 469 239 473 243" />
+                <path d="M 475 220 Q 483 225 486 229" />
+              </g>
+
+              <!-- Subtle Scale Spots on Back -->
+              <g fill="#2b6633" opacity="0.4">
+                <ellipse cx="416" cy="233" rx="6" ry="3.5" transform="rotate(-18 416 233)" />
+                <ellipse cx="436" cy="220" rx="5.5" ry="3.2" transform="rotate(-22 436 220)" />
+                <ellipse cx="455" cy="209" rx="5" ry="3" transform="rotate(-25 455 209)" />
+              </g>
+
+              <!-- Fluttering Neck Scarf (trailing tails animated via JS) -->
+              <g id="scarfGroup">
+                <path id="scarfTailBack" d="" fill="#d65d24" stroke="#8c3610" stroke-width="1.4" stroke-linejoin="round" />
+                <path id="scarfTailFront" d="" fill="url(#scarfGrad)" stroke="#9a4414" stroke-width="1.5" stroke-linejoin="round" />
+                <!-- Scarf Collar Wrap -->
+                <path d="M 455 182 C 470 191 486 196 499 194 C 502 199 499 208 493 210 C 478 212 460 204 447 192 C 446 187 450 181 455 182 Z"
+                      fill="url(#scarfGrad)" stroke="#9a4414" stroke-width="1.6" />
+                <circle cx="468" cy="196" r="2.2" fill="#fff3c4" opacity="0.9" />
+                <circle cx="481" cy="201" r="2.2" fill="#fff3c4" opacity="0.9" />
+                <circle cx="493" cy="201" r="2" fill="#fff3c4" opacity="0.9" />
+              </g>
+
+              <!-- Crocodile Head & Expressive Snout -->
+              <g id="crocHead" transform="translate(476, 178)">
+                <!-- Lower Jaw -->
+                <path d="M 8 11
+                         C 34 14 78 14 102 6
+                         C 107 4 109 8 106 12
+                         C 98 20 71 25 36 24
+                         C 19 23 6 19 2 14 Z"
+                      fill="#428f49" stroke="#1e4b25" stroke-width="2.1" stroke-linejoin="round" />
+                <!-- Lower Jaw Belly Tint -->
+                <path d="M 14 17 C 40 21 76 21 97 13 C 86 20 55 24 22 21 Z" fill="url(#crocBellyGrad)" opacity="0.9" />
+
+                <!-- Friendly Teeth (interlocking along grin) -->
+                <g fill="#fffdf5" stroke="#2c5933" stroke-width="1.1" stroke-linejoin="round">
+                  <path d="M 33 8 L 37 15 L 41 8 Z" />
+                  <path d="M 52 8 L 56 15 L 60 8 Z" />
+                  <path d="M 73 7 L 77 14 L 81 7 Z" />
+                  <path d="M 91 5 L 94 11 L 98 4 Z" />
+                  <!-- One cute upturned lower tooth -->
+                  <path d="M 63 13 L 66 7 L 70 13 Z" />
+                  <path d="M 83 11 L 86 6 L 89 11 Z" />
+                </g>
+
+                <!-- Upper Head & Long Snout -->
+                <path d="M -16 6
+                         C -19 -14 -8 -28 9 -29
+                         C 18 -30 25 -24 29 -17
+                         C 45 -18 68 -16 90 -14
+                         C 101 -13 112 -14 117 -8
+                         C 122 -2 117 7 104 9
+                         C 78 13 42 13 15 11
+                         C 1 10 -13 12 -16 6 Z"
+                      fill="url(#crocBodyGrad)" stroke="#1e4b25" stroke-width="2.2" stroke-linejoin="round" />
+
+                <!-- Cute Snout Bumps & Nostrils -->
+                <circle cx="106" cy="-8" r="5.5" fill="#4f9e54" stroke="#1e4b25" stroke-width="1.8" />
+                <ellipse cx="107" cy="-8.5" rx="2.3" ry="1.4" fill="#1b4321" transform="rotate(-15 107 -8.5)" />
+                <path d="M 48 -11 Q 63 -13 78 -10" fill="none" stroke="#2b6b34" stroke-width="1.8" stroke-linecap="round" opacity="0.55" />
+
+                <!-- Cheek Smile Dimple -->
+                <path d="M 15 6 Q 11 11 14 15" fill="none" stroke="#1e4b25" stroke-width="1.8" stroke-linecap="round" />
+
+                <!-- Eye Ridge & Expressive Eye -->
+                <g transform="translate(12, -18)">
+                  <circle cx="0" cy="0" r="12" fill="#4fa054" stroke="#1e4b25" stroke-width="2" />
+                  <g id="crocEyeOpen">
+                    <ellipse cx="2" cy="0" rx="7.6" ry="8.4" fill="#fffdf4" stroke="#1e4b25" stroke-width="1.4" />
+                    <ellipse cx="4.3" cy="0" rx="3.4" ry="5.5" fill="#182b1e" />
+                    <circle cx="5.6" cy="-2.4" r="1.7" fill="#ffffff" />
+                  </g>
+                  <!-- Blinking Eyelid (toggled briefly via JS) -->
+                  <path id="crocEyeBlink" d="M -6 0 Q 2 4 10 0" fill="none" stroke="#1e4b25" stroke-width="2.4" stroke-linecap="round" opacity="0" />
+                </g>
+
+                <!-- Tiny Cheek Blush -->
+                <ellipse cx="22" cy="2" rx="6.5" ry="3.5" fill="#f08b78" opacity="0.38" />
+              </g>
+            </g>
+
+            <!-- LAYER H: NEAR CRANK & NEAR PEDAL -->
+            <g id="nearCrankGroup">
+              <line id="nearCrankArm" x1="452" y1="374" x2="486" y2="374" stroke="#d5dfe4" stroke-width="8" stroke-linecap="round" />
+              <line id="nearCrankHighlight" x1="452" y1="374" x2="486" y2="374" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+              <circle cx="452" cy="374" r="6.5" fill="#5e6b72" stroke="#2d363b" stroke-width="1.6" />
+              <g id="nearPedal">
+                <rect x="-17" y="-4.5" width="34" height="9" rx="3.5" fill="#2b3337" stroke="#161b1d" stroke-width="1.4" />
+                <rect x="-10" y="-1.8" width="20" height="3.6" rx="1.6" fill="#f5a623" />
+              </g>
+            </g>
+
+            <!-- LAYER I: NEAR LEG (Right Crocodile Leg linked to Near Pedal via 2-Bone IK) -->
+            <g id="nearLegGroup">
+              <!-- Outer outline stroke + inner fill stroke for clean cartoon volume -->
+              <path id="nearThighOutline" d="" fill="none" stroke="#1d4a24" stroke-width="30" stroke-linecap="round" />
+              <path id="nearCalfOutline" d="" fill="none" stroke="#1d4a24" stroke-width="23.5" stroke-linecap="round" />
+              <path id="nearThigh" d="" fill="none" stroke="#45944c" stroke-width="25.5" stroke-linecap="round" />
+              <path id="nearCalf" d="" fill="none" stroke="#408d47" stroke-width="19" stroke-linecap="round" />
+              <!-- Knee Joint Cap & Scales -->
+              <circle id="nearKneeCap" cx="0" cy="0" r="12.5" fill="#47974e" />
+              <circle id="nearKneeDot" cx="0" cy="0" r="4" fill="#2c6b34" opacity="0.45" />
+              <!-- Crocodile Foot resting flat on Near Pedal -->
+              <g id="nearFoot">
+                <path d="M -13 4 C -11 -8 7 -10 24 -4 C 33 -1 38 4 36 8 C 33 13 11 13 -11 10 C -14 9 -15 6 -13 4 Z"
+                      fill="#428f49" stroke="#1d4a24" stroke-width="2" stroke-linejoin="round" />
+                <!-- Pale sole accent & claws -->
+                <path d="M -6 8 Q 12 10 28 8" fill="none" stroke="#d9e6a8" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+                <path d="M 29 1 l 7 1.8 M 29 5 l 7 1.2" stroke="#f5f3d8" stroke-width="2.2" stroke-linecap="round" />
+              </g>
+            </g>
+
+            <!-- LAYER J: NEAR ARM (Right Arm linked to Handlebar via 2-Bone IK) -->
+            <g id="nearArmGroup">
+              <path id="nearUpperArmOutline" d="" fill="none" stroke="#1d4a24" stroke-width="21.5" stroke-linecap="round" />
+              <path id="nearForeArmOutline" d="" fill="none" stroke="#1d4a24" stroke-width="18" stroke-linecap="round" />
+              <path id="nearUpperArm" d="" fill="none" stroke="#47964e" stroke-width="17.2" stroke-linecap="round" />
+              <path id="nearForeArm" d="" fill="none" stroke="#428f49" stroke-width="14" stroke-linecap="round" />
+              <!-- Hand gripping Near Handlebar -->
+              <g id="nearHand" transform="translate(524, 217)">
+                <ellipse cx="0" cy="0" rx="10" ry="8.5" fill="#428f49" stroke="#1d4a24" stroke-width="2" />
+                <path d="M -4 -4 L -1 3 M 1 -4 L 3 3 M 5 -3 L 7 2" stroke="#1d4a24" stroke-width="1.5" stroke-linecap="round" />
+              </g>
+            </g>
+
+          </g>
+        </g>
+      </svg>
+    </section>
+
+    <section class="controls" aria-label="骑行控制面板">
+      <div class="control-row">
+        <button id="toggleBtn" class="btn btn-primary" type="button" aria-pressed="false">
+          <span id="toggleIcon">⏸</span>
+          <span id="toggleText">暂停</span>
+        </button>
+
+        <div class="slider-group">
+          <label class="slider-label" for="speedSlider">骑行速度</label>
+          <input id="speedSlider" type="range" min="0" max="3" step="0.1" value="1" aria-label="调节骑行速度倍数" />
+          <span class="speed-val" id="speedValue">1.0×</span>
+        </div>
+
+        <button id="bellBtn" class="btn btn-bell" type="button" title="按车铃">
+          🔔 叮铃铃
+        </button>
+      </div>
+
+      <div class="presets">
+        <div class="preset-buttons" role="group" aria-label="快捷速度档位">
+          <button class="preset-btn" type="button" data-speed="0.4">慢悠悠 0.4×</button>
+          <button class="preset-btn active" type="button" data-speed="1">悠闲 1.0×</button>
+          <button class="preset-btn" type="button" data-speed="1.8">轻快 1.8×</button>
+          <button class="preset-btn" type="button" data-speed="2.8">冲刺 2.8×</button>
+        </div>
+        <div class="hint">
+          快捷键：<kbd>Space</kbd> 暂停/继续 · <kbd>←</kbd> <kbd>→</kbd> 调速
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---------- DOM References ----------
+      const svgNS = "http://www.w3.org/2000/svg";
+
+      const cloudLayer = document.getElementById("cloudLayer");
+      const farHillLayer = document.getElementById("farHillLayer");
+      const midLayer = document.getElementById("midLayer");
+      const roadLayer = document.getElementById("roadLayer");
+      const sunRays = document.getElementById("sunRays");
+      const windLines = document.getElementById("windLines");
+      const windEls = [
+        document.getElementById("wind1"),
+        document.getElementById("wind2"),
+        document.getElementById("wind3"),
+        document.getElementById("wind4")
+      ];
+      const groundShadow = document.getElementById("groundShadow");
+
+      const rearWheelSpin = document.getElementById("rearWheelSpin");
+      const frontWheelSpin = document.getElementById("frontWheelSpin");
+      const chainringSpin = document.getElementById("chainringSpin");
+      const chainLinks = document.getElementById("chainLinks");
+
+      const farCrankArm = document.getElementById("farCrankArm");
+      const farPedal = document.getElementById("farPedal");
+      const nearCrankArm = document.getElementById("nearCrankArm");
+      const nearCrankHighlight = document.getElementById("nearCrankHighlight");
+      const nearPedal = document.getElementById("nearPedal");
+
+      const farThigh = document.getElementById("farThigh");
+      const farCalf = document.getElementById("farCalf");
+      const farKneeCap = document.getElementById("farKneeCap");
+      const farFoot = document.getElementById("farFoot");
+
+      const nearThighOutline = document.getElementById("nearThighOutline");
+      const nearCalfOutline = document.getElementById("nearCalfOutline");
+      const nearThigh = document.getElementById("nearThigh");
+      const nearCalf = document.getElementById("nearCalf");
+      const nearKneeCap = document.getElementById("nearKneeCap");
+      const nearKneeDot = document.getElementById("nearKneeDot");
+      const nearFoot = document.getElementById("nearFoot");
+
+      const farUpperArm = document.getElementById("farUpperArm");
+      const farForeArm = document.getElementById("farForeArm");
+      const nearUpperArmOutline = document.getElementById("nearUpperArmOutline");
+      const nearForeArmOutline = document.getElementById("nearForeArmOutline");
+      const nearUpperArm = document.getElementById("nearUpperArm");
+      const nearForeArm = document.getElementById("nearForeArm");
+
+      const crocUpperBody = document.getElementById("crocUpperBody");
+      const crocHead = document.getElementById("crocHead");
+      const crocEyeOpen = document.getElementById("crocEyeOpen");
+      const crocEyeBlink = document.getElementById("crocEyeBlink");
+
+      const tailBodyPath = document.getElementById("tailBodyPath");
+      const tailBellyPath = document.getElementById("tailBellyPath");
+      const tailScutesGroup = document.getElementById("tailScutes");
+      const tailStripesGroup = document.getElementById("tailStripes");
+      const scarfTailFront = document.getElementById("scarfTailFront");
+      const scarfTailBack = document.getElementById("scarfTailBack");
+
+      const bellWaves = document.getElementById("bellWaves");
+
+      // Controls
+      const toggleBtn = document.getElementById("toggleBtn");
+      const toggleIcon = document.getElementById("toggleIcon");
+      const toggleText = document.getElementById("toggleText");
+      const speedSlider = document.getElementById("speedSlider");
+      const speedValue = document.getElementById("speedValue");
+      const kmhDisplay = document.getElementById("kmhDisplay");
+      const rpmDisplay = document.getElementById("rpmDisplay");
+      const bellBtn = document.getElementById("bellBtn");
+      const presetBtns = Array.from(document.querySelectorAll(".preset-btn"));
+
+      // ---------- Pre-create Tail Scutes & Stripe Elements ----------
+      const SCUTE_COUNT = 7;
+      const scuteEls = [];
+      for (let i = 0; i < SCUTE_COUNT; i++) {
+        const p = document.createElementNS(svgNS, "path");
+        p.setAttribute("fill", "url(#scuteGrad)");
+        p.setAttribute("stroke", "#1b4321");
+        p.setAttribute("stroke-width", "1.4");
+        p.setAttribute("stroke-linejoin", "round");
+        tailScutesGroup.appendChild(p);
+        scuteEls.push(p);
+      }
+
+      const STRIPE_COUNT = 6;
+      const stripeEls = [];
+      for (let i = 0; i < STRIPE_COUNT; i++) {
+        const l = document.createElementNS(svgNS, "line");
+        tailStripesGroup.appendChild(l);
+        stripeEls.push(l);
+      }
+
+      // ---------- Geometry Constants ----------
+      const BB_X = 452;
+      const BB_Y = 374;
+      const CRANK_R = 34;
+      const WHEEL_R = 64;
+      const GEAR_RATIO = 1.85; // 1 crank turn = 1.85 wheel turns
+      const BASE_CRANK_RAD_PER_SEC = Math.PI * 2; // 1.0x = 60 RPM (1 rev/sec)
+
+      // Leg IK constants
+      const THIGH_L = 84;
+      const CALF_L = 82;
+      const HIP_BASE_X = 414;
+      const HIP_BASE_Y = 256;
+
+      // Arm IK constants
+      const UPPER_ARM_L = 43;
+      const FORE_ARM_L = 42;
+      const SHOULDER_NEAR_BASE = { x: 460, y: 215 };
+      const SHOULDER_FAR_BASE = { x: 472, y: 210 };
+      const GRIP_NEAR = { x: 524, y: 217 };
+      const GRIP_FAR = { x: 539, y: 212 };
+
+      // ---------- Animation State ----------
+      let isPlaying = true;
+      let targetSpeed = 1.0;
+      let currentSpeed = 1.0; // smoothly approaches targetSpeed
+      let crankAngle = 0.35;  // radians
+      let wheelAngle = crankAngle * GEAR_RATIO;
+      let roadScroll = 0;
+      let midScroll = 0;
+      let farHillScroll = 0;
+      let cloudScroll = 0;
+      let elapsedTime = 0;
+      let lastTime = performance.now();
+
+      // Blink & Bell state
+      let nextBlinkTime = 2.4;
+      let blinkRemaining = 0;
+      let bellWaveTimer = 0;
+
+      // ---------- Math Helpers ----------
+      function solveTwoBoneIK(hx, hy, tx, ty, l1, l2, bendSign) {
+        const dx = tx - hx;
+        const dy = ty - hy;
+        const rawDist = Math.hypot(dx, dy);
+        const minD = Math.abs(l1 - l2) + 0.5;
+        const maxD = l1 + l2 - 0.5;
+        const d = Math.max(minD, Math.min(maxD, rawDist));
+
+        const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+        const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+        const ux = rawDist > 1e-4 ? dx / rawDist : 1;
+        const uy = rawDist > 1e-4 ? dy / rawDist : 0;
+
+        // bendSign = +1 -> perpendicular (uy, -ux) (forward/right for down-pointing leg)
+        // bendSign = -1 -> perpendicular (-uy, ux) (downward for right-pointing arm)
+        const kx = hx + a * ux + bendSign * h * uy;
+        const ky = hy + a * uy - bendSign * h * ux;
+        return { x: kx, y: ky };
+      }
+
+      function setLine(el, x1, y1, x2, y2) {
+        el.setAttribute("x1", x1.toFixed(1));
+        el.setAttribute("y1", y1.toFixed(1));
+        el.setAttribute("x2", x2.toFixed(1));
+        el.setAttribute("y2", y2.toFixed(1));
+      }
+
+      function setSegmentPath(el, x1, y1, x2, y2) {
+        el.setAttribute("d", `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+      }
+
+      // ---------- Dynamic Tail Renderer ----------
+      // Builds an organic multi-segment swaying crocodile tail with scutes & belly stripe
+      function updateTail(baseX, baseY, swayPhase, swayAmp) {
+        const N = 8; // spine sample points from base (0) to tip (N-1)
+        const tailLen = 238;
+
+        const pts = [];
+        for (let i = 0; i < N; i++) {
+          const t = i / (N - 1); // 0 at hip, 1 at tail tip
+          // Natural arched curve dipping behind saddle then gently rising toward tip
+          const x = baseX - t * tailLen;
+          const archY = Math.sin(t * Math.PI * 1.08) * 20 - t * 14;
+          // Traveling sinusoidal wave driven by cycling rhythm
+          const waveY = Math.pow(t, 1.35) * swayAmp * Math.sin(swayPhase - t * 2.55);
+          const y = baseY + archY + waveY;
+
+          // Tapered half-thickness (thick at hip, pointed at tip)
+          const halfW = (1 - t) * (1 - t * 0.28) * 21.5 + 1.4;
+          pts.push({ x, y, halfW, t });
+        }
+
+        // Compute upper & lower contours using local normals
+        const topPts = [];
+        const botPts = [];
+        const bellyTopPts = [];
+
+        for (let i = 0; i < N; i++) {
+          const prev = pts[Math.max(0, i - 1)];
+          const next = pts[Math.min(N - 1, i + 1)];
+          const tx = next.x - prev.x;
+          const ty = next.y - prev.y;
+          const len = Math.hypot(tx, ty) || 1;
+          // Tangent points left (tx < 0). Upper normal in SVG (-y) is (ty/len, -tx/len)
+          let nx = ty / len;
+          let ny = -tx / len;
+          if (ny > 0) {
+            nx = -nx;
+            ny = -ny;
+          }
+
+          const p = pts[i];
+          topPts.push({ x: p.x + nx * p.halfW, y: p.y + ny * p.halfW, nx, ny });
+          botPts.push({ x: p.x - nx * p.halfW, y: p.y - ny * p.halfW });
+          bellyTopPts.push({ x: p.x - nx * (p.halfW * 0.34), y: p.y - ny * (p.halfW * 0.34) });
+        }
+
+        // Main tail polygon path (smoothly joined)
+        let dBody = `M ${topPts[0].x.toFixed(1)} ${topPts[0].y.toFixed(1)}`;
+        for (let i = 1; i < N; i++) {
+          dBody += ` L ${topPts[i].x.toFixed(1)} ${topPts[i].y.toFixed(1)}`;
+        }
+        // Tapered tip
+        const tip = pts[N - 1];
+        dBody += ` L ${(tip.x - 7).toFixed(1)} ${(tip.y - 1).toFixed(1)}`;
+        for (let i = N - 1; i >= 0; i--) {
+          dBody += ` L ${botPts[i].x.toFixed(1)} ${botPts[i].y.toFixed(1)}`;
+        }
+        dBody += " Z";
+        tailBodyPath.setAttribute("d", dBody);
+
+        // Pale underside belly stripe
+        let dBelly = `M ${bellyTopPts[0].x.toFixed(1)} ${bellyTopPts[0].y.toFixed(1)}`;
+        for (let i = 1; i < N - 1; i++) {
+          dBelly += ` L ${bellyTopPts[i].x.toFixed(1)} ${bellyTopPts[i].y.toFixed(1)}`;
+        }
+        dBelly += ` L ${botPts[N - 1].x.toFixed(1)} ${botPts[N - 1].y.toFixed(1)}`;
+        for (let i = N - 2; i >= 0; i--) {
+          dBelly += ` L ${botPts[i].x.toFixed(1)} ${botPts[i].y.toFixed(1)}`;
+        }
+        dBelly += " Z";
+        tailBellyPath.setAttribute("d", dBelly);
+
+        // Dorsal scutes along upper edge
+        for (let i = 0; i < SCUTE_COUNT; i++) {
+          const frac = (i + 0.5) / (SCUTE_COUNT + 0.45); // along [0.07 .. 0.90]
+          const segPos = frac * (N - 1);
+          const idx = Math.min(N - 2, Math.floor(segPos));
+          const u = segPos - idx;
+
+          const p0 = topPts[idx];
+          const p1 = topPts[idx + 1];
+          const cx = p0.x + (p1.x - p0.x) * u;
+          const cy = p0.y + (p1.y - p0.y) * u;
+          const nx = p0.nx + (p1.nx - p0.nx) * u;
+          const ny = p0.ny + (p1.ny - p0.ny) * u;
+          const nLen = Math.hypot(nx, ny) || 1;
+          const unx = nx / nLen;
+          const uny = ny / nLen;
+          // Tangent along tail
+          const tx = -uny;
+          const ty = unx;
+
+          const size = (1 - frac * 0.58) * 14.5;
+          const halfBase = size * 0.58;
+          const height = size * 0.88;
+
+          const ax = cx - tx * halfBase;
+          const ay = cy - ty * halfBase;
+          const bx = cx + tx * halfBase;
+          const by = cy + ty * halfBase;
+          // Slight backward rake
+          const px = cx + unx * height - tx * (halfBase * 0.3);
+          const py = cy + uny * height - ty * (halfBase * 0.3);
+
+          scuteEls[i].setAttribute(
+            "d",
+            `M ${ax.toFixed(1)} ${ay.toFixed(1)} L ${px.toFixed(1)} ${py.toFixed(1)} L ${bx.toFixed(1)} ${by.toFixed(1)} Z`
+          );
+        }
+
+        // Subtle vertical scale bands along tail side
+        for (let i = 0; i < STRIPE_COUNT; i++) {
+          const idx = i + 1;
+          const tP = topPts[idx];
+          const bP = bellyTopPts[idx];
+          setLine(
+            stripeEls[i],
+            tP.x + (bP.x - tP.x) * 0.25,
+            tP.y + (bP.y - tP.y) * 0.25,
+            bP.x,
+            bP.y
+          );
+        }
+      }
+
+      // ---------- Dynamic Scarf Flutter ----------
+      function updateScarf(time, speed) {
+        const flutterFreq = 5 + speed * 7.5;
+        const flutterAmp = 2 + Math.min(11, speed * 4.5);
+        const lift = Math.min(18, speed * 7.5);
+
+        const w1 = Math.sin(time * flutterFreq) * flutterAmp;
+        const w2 = Math.cos(time * flutterFreq - 1.3) * (flutterAmp * 1.15);
+
+        // Front ribbon tail
+        const fx0 = 457, fy0 = 191;
+        const fx1 = 428, fy1 = 197 - lift * 0.45 + w1 * 0.6;
+        const fx2 = 398, fy2 = 205 - lift + w2;
+        scarfTailFront.setAttribute(
+          "d",
+          `M ${fx0} ${fy0}
+           Q ${fx1.toFixed(1)} ${(fy1 - 6).toFixed(1)} ${fx2.toFixed(1)} ${(fy2 - 5).toFixed(1)}
+           L ${(fx2 + 4).toFixed(1)} ${(fy2 + 8).toFixed(1)}
+           Q ${(fx1 + 2).toFixed(1)} ${(fy1 + 9).toFixed(1)} ${(fx0 + 4)} ${(fy0 + 11)} Z`
+        );
+
+        // Back shorter ribbon tail
+        const bx0 = 453, by0 = 188;
+        const bx1 = 430, by1 = 186 - lift * 0.6 - w1 * 0.5;
+        const bx2 = 407, by2 = 187 - lift * 1.05 - w2 * 0.8;
+        scarfTailBack.setAttribute(
+          "d",
+          `M ${bx0} ${by0}
+           Q ${bx1.toFixed(1)} ${(by1 - 5).toFixed(1)} ${bx2.toFixed(1)} ${(by2 - 4).toFixed(1)}
+           L ${(bx2 + 3).toFixed(1)} ${(by2 + 6).toFixed(1)}
+           Q ${(bx1 + 2).toFixed(1)} ${(by1 + 6).toFixed(1)} ${(bx0 + 2)} ${(by0 + 8)} Z`
+        );
+      }
+
+      // ---------- Offline Web Audio Brass Bike Bell ----------
+      let audioCtx = null;
+      function playBellSound() {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!audioCtx) audioCtx = new AudioContextClass();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+
+          const now = audioCtx.currentTime;
+          // Classic double "ding-ding!" harmonic bell timbre
+          [0, 0.14].forEach((offset) => {
+            const freqs = [1568, 3136, 4720];
+            freqs.forEach((f, idx) => {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(f, now + offset);
+              const amp = idx === 0 ? 0.14 : idx === 1 ? 0.055 : 0.02;
+              gain.gain.setValueAtTime(0.0001, now + offset);
+              gain.gain.exponentialRampToValueAtTime(amp, now + offset + 0.008);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.52);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(now + offset);
+              osc.stop(now + offset + 0.55);
+            });
+          });
+        } catch (_) {
+          // Audio playback optional; visual bell animation still runs
+        }
+      }
+
+      function triggerBell() {
+        bellWaveTimer = 0.65;
+        blinkRemaining = 0.14;
+        playBellSound();
+      }
+
+      // ---------- Render Single Frame ----------
+      function renderFrame() {
+        const wheelDeg = (wheelAngle * 180) / Math.PI;
+        const crankDeg = (crankAngle * 180) / Math.PI;
+
+        // 1. Wheels & Chainring & Chain
+        rearWheelSpin.setAttribute("transform", `rotate(${wheelDeg.toFixed(2)})`);
+        frontWheelSpin.setAttribute("transform", `rotate(${wheelDeg.toFixed(2)})`);
+        chainringSpin.setAttribute("transform", `rotate(${crankDeg.toFixed(2)})`);
+        // Chain travels clockwise with front chainring perimeter (radius 25)
+        const chainOffset = -(crankAngle * 25) % 10;
+        chainLinks.setAttribute("stroke-dashoffset", chainOffset.toFixed(2));
+
+        // 2. Parallax Backgrounds & Ground (1:1 wheel distance on road)
+        roadLayer.setAttribute("transform", `translate(${(-roadScroll).toFixed(2)}, 0)`);
+        midLayer.setAttribute("transform", `translate(${(-midScroll).toFixed(2)}, 0)`);
+        farHillLayer.setAttribute("transform", `translate(${(-farHillScroll).toFixed(2)}, 0)`);
+        cloudLayer.setAttribute("transform", `translate(${(-cloudScroll).toFixed(2)}, 0)`);
+        sunRays.setAttribute("transform", `rotate(${(elapsedTime * 6).toFixed(2)})`);
+
+        // 3. Subtle Wind Streaks when riding fast
+        const windAlpha = Math.max(0, Math.min(1, (currentSpeed - 1.25) / 1.1));
+        windLines.setAttribute("opacity", windAlpha.toFixed(2));
+        if (windAlpha > 0.01) {
+          for (let i = 0; i < windEls.length; i++) {
+            const wShift = ((elapsedTime * (280 + i * 75) * currentSpeed + i * 290) % 1160);
+            windEls[i].setAttribute("transform", `translate(${(1020 - wShift).toFixed(1)}, 0)`);
+          }
+        }
+
+        // 4. Torso Bob & Head Nod (synced to 2x crank cadence — one tiny bounce per downstroke)
+        const speedFactor = Math.min(1, currentSpeed / 0.5);
+        const torsoBob = Math.sin(crankAngle * 2) * (2.6 * speedFactor);
+        const torsoRock = Math.cos(crankAngle) * (1.3 * speedFactor);
+        const headNod = Math.sin(crankAngle * 2 - 0.5) * (1.6 * speedFactor);
+
+        crocUpperBody.setAttribute(
+          "transform",
+          `translate(0, ${torsoBob.toFixed(2)}) rotate(${torsoRock.toFixed(2)} 414 252)`
+        );
+        crocHead.setAttribute(
+          "transform",
+          `translate(476, 178) rotate(${headNod.toFixed(2)})`
+        );
+
+        const rockRad = (torsoRock * Math.PI) / 180;
+        const cosR = Math.cos(rockRad);
+        const sinR = Math.sin(rockRad);
+        function attachToTorso(x, y) {
+          const dx = x - 414;
+          const dy = y - 252;
+          return {
+            x: 414 + dx * cosR - dy * sinR,
+            y: 252 + torsoBob + dx * sinR + dy * cosR
+          };
+        }
+
+        // Subtle breathing ground shadow
+        const shadowRx = 205 + torsoBob * 1.4;
+        groundShadow.setAttribute("rx", shadowRx.toFixed(1));
+
+        // 5. Pedal & Crank Positions
+        const nearAngle = crankAngle;
+        const farAngle = crankAngle + Math.PI;
+
+        const nearPX = BB_X + Math.cos(nearAngle) * CRANK_R;
+        const nearPY = BB_Y + Math.sin(nearAngle) * CRANK_R;
+        const farPX = BB_X + Math.cos(farAngle) * CRANK_R;
+        const farPY = BB_Y + Math.sin(farAngle) * CRANK_R;
+
+        // Slight natural ankle/pedal tilt during pedal stroke
+        const nearPedalTilt = -Math.sin(nearAngle) * 7;
+        const farPedalTilt = -Math.sin(farAngle) * 7;
+
+        setLine(farCrankArm, BB_X, BB_Y, farPX, farPY);
+        farPedal.setAttribute("transform", `translate(${farPX.toFixed(1)}, ${farPY.toFixed(1)}) rotate(${farPedalTilt.toFixed(1)})`);
+
+        setLine(nearCrankArm, BB_X, BB_Y, nearPX, nearPY);
+        setLine(nearCrankHighlight, BB_X, BB_Y, nearPX, nearPY);
+        nearPedal.setAttribute("transform", `translate(${nearPX.toFixed(1)}, ${nearPY.toFixed(1)}) rotate(${nearPedalTilt.toFixed(1)})`);
+
+        // 6. Leg Inverse Kinematics (Hip -> Knee -> Ankle locked to Pedals)
+        const nearHip = attachToTorso(HIP_BASE_X, HIP_BASE_Y);
+        const farHip = attachToTorso(HIP_BASE_X + 9, HIP_BASE_Y - 3);
+
+        const nearAnkleX = nearPX - 5;
+        const nearAnkleY = nearPY - 11.5;
+        const farAnkleX = farPX - 5;
+        const farAnkleY = farPY - 11.5;
+
+        const nearKnee = solveTwoBoneIK(nearHip.x, nearHip.y, nearAnkleX, nearAnkleY, THIGH_L, CALF_L, 1);
+        const farKnee = solveTwoBoneIK(farHip.x, farHip.y, farAnkleX, farAnkleY, THIGH_L, CALF_L, 1);
+
+        // Far Leg SVG updates
+        setSegmentPath(farThigh, farHip.x, farHip.y, farKnee.x, farKnee.y);
+        setSegmentPath(farCalf, farKnee.x, farKnee.y, farAnkleX, farAnkleY);
+        farKneeCap.setAttribute("cx", farKnee.x.toFixed(1));
+        farKneeCap.setAttribute("cy", farKnee.y.toFixed(1));
+        farFoot.setAttribute(
+          "transform",
+          `translate(${farAnkleX.toFixed(1)}, ${farAnkleY.toFixed(1)}) rotate(${farPedalTilt.toFixed(1)})`
+        );
+
+        // Near Leg SVG updates
+        setSegmentPath(nearThighOutline, nearHip.x, nearHip.y, nearKnee.x, nearKnee.y);
+        setSegmentPath(nearCalfOutline, nearKnee.x, nearKnee.y, nearAnkleX, nearAnkleY);
+        setSegmentPath(nearThigh, nearHip.x, nearHip.y, nearKnee.x, nearKnee.y);
+        setSegmentPath(nearCalf, nearKnee.x, nearKnee.y, nearAnkleX, nearAnkleY);
+        nearKneeCap.setAttribute("cx", nearKnee.x.toFixed(1));
+        nearKneeCap.setAttribute("cy", nearKnee.y.toFixed(1));
+        nearKneeDot.setAttribute("cx", (nearKnee.x + 2).toFixed(1));
+        nearKneeDot.setAttribute("cy", (nearKnee.y - 2).toFixed(1));
+        nearFoot.setAttribute(
+          "transform",
+          `translate(${nearAnkleX.toFixed(1)}, ${nearAnkleY.toFixed(1)}) rotate(${nearPedalTilt.toFixed(1)})`
+        );
+
+        // 7. Arm Inverse Kinematics (Hands stay locked to Handlebars while torso bobs)
+        const nearSh = attachToTorso(SHOULDER_NEAR_BASE.x, SHOULDER_NEAR_BASE.y);
+        const farSh = attachToTorso(SHOULDER_FAR_BASE.x, SHOULDER_FAR_BASE.y);
+
+        const nearElbow = solveTwoBoneIK(nearSh.x, nearSh.y, GRIP_NEAR.x, GRIP_NEAR.y, UPPER_ARM_L, FORE_ARM_L, -1);
+        const farElbow = solveTwoBoneIK(farSh.x, farSh.y, GRIP_FAR.x, GRIP_FAR.y, UPPER_ARM_L, FORE_ARM_L, -1);
+
+        setSegmentPath(farUpperArm, farSh.x, farSh.y, farElbow.x, farElbow.y);
+        setSegmentPath(farForeArm, farElbow.x, farElbow.y, GRIP_FAR.x, GRIP_FAR.y);
+
+        setSegmentPath(nearUpperArmOutline, nearSh.x, nearSh.y, nearElbow.x, nearElbow.y);
+        setSegmentPath(nearForeArmOutline, nearElbow.x, nearElbow.y, GRIP_NEAR.x, GRIP_NEAR.y);
+        setSegmentPath(nearUpperArm, nearSh.x, nearSh.y, nearElbow.x, nearElbow.y);
+        setSegmentPath(nearForeArm, nearElbow.x, nearElbow.y, GRIP_NEAR.x, GRIP_NEAR.y);
+
+        // 8. Crocodile Tail Sway (gentle idle sway + cycling-coupled sway)
+        const tailRoot = attachToTorso(392, 250);
+        const tailSwayAmp = 4 + Math.min(18, currentSpeed * 8.5);
+        const tailPhase = crankAngle + elapsedTime * 0.9;
+        updateTail(tailRoot.x, tailRoot.y, tailPhase, tailSwayAmp);
+
+        // 9. Scarf Flutter
+        updateScarf(elapsedTime, currentSpeed);
+
+        // 10. Eye Blink
+        const isBlinking = blinkRemaining > 0;
+        crocEyeOpen.setAttribute("opacity", isBlinking ? "0" : "1");
+        crocEyeBlink.setAttribute("opacity", isBlinking ? "1" : "0");
+
+        // 11. Bell Ring Visual Waves
+        if (bellWaveTimer > 0) {
+          const p = 1 - bellWaveTimer / 0.65;
+          const scale = 0.85 + p * 0.75;
+          const alpha = Math.sin(p * Math.PI);
+          bellWaves.setAttribute("opacity", alpha.toFixed(2));
+          bellWaves.setAttribute("transform", `scale(${scale.toFixed(2)})`);
+        } else {
+          bellWaves.setAttribute("opacity", "0");
+        }
+      }
+
+      // ---------- Main Animation Loop ----------
+      function tick(now) {
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+        elapsedTime += dt;
+
+        // Smooth acceleration/deceleration toward target speed
+        const desired = isPlaying ? targetSpeed : 0;
+        const smoothing = 1 - Math.exp(-dt * 8);
+        currentSpeed += (desired - currentSpeed) * smoothing;
+        if (Math.abs(currentSpeed - desired) < 0.002) {
+          currentSpeed = desired;
+        }
+
+        // Advance kinematics
+        const dCrank = BASE_CRANK_RAD_PER_SEC * currentSpeed * dt;
+        const dWheel = dCrank * GEAR_RATIO;
+        crankAngle += dCrank;
+        wheelAngle += dWheel;
+
+        // Exact ground displacement matching wheel circumference (zero slip!)
+        const dGround = dWheel * WHEEL_R;
+        roadScroll = (roadScroll + dGround) % 240;
+        midScroll = (midScroll + dGround * 0.24) % 960;
+        farHillScroll = (farHillScroll + dGround * 0.09) % 960;
+        cloudScroll = (cloudScroll + 8 * dt + dGround * 0.035) % 960;
+
+        // Periodic natural blink
+        if (blinkRemaining > 0) {
+          blinkRemaining = Math.max(0, blinkRemaining - dt);
+        } else if (elapsedTime >= nextBlinkTime) {
+          blinkRemaining = 0.13;
+          nextBlinkTime = elapsedTime + 2.6 + Math.random() * 3.2;
+        }
+
+        if (bellWaveTimer > 0) {
+          bellWaveTimer = Math.max(0, bellWaveTimer - dt);
+        }
+
+        // Live telemetry readout
+        const kmh = currentSpeed * 16.0;
+        const rpm = Math.round(currentSpeed * 60);
+        kmhDisplay.textContent = kmh.toFixed(1);
+        rpmDisplay.textContent = String(rpm);
+
+        renderFrame();
+        requestAnimationFrame(tick);
+      }
+
+      // ---------- UI Controls Wiring ----------
+      function updatePresetHighlight(val) {
+        presetBtns.forEach((btn) => {
+          const p = parseFloat(btn.dataset.speed);
+          btn.classList.toggle("active", Math.abs(p - val) < 0.05);
+        });
+      }
+
+      function setSpeed(val) {
+        const clamped = Math.max(0, Math.min(3, Math.round(val * 10) / 10));
+        targetSpeed = clamped;
+        speedSlider.value = String(clamped);
+        speedValue.textContent = `${clamped.toFixed(1)}×`;
+        updatePresetHighlight(clamped);
+
+        if (clamped > 0 && !isPlaying) {
+          setPlaying(true);
+        }
+      }
+
+      function setPlaying(playing) {
+        isPlaying = playing;
+        toggleBtn.setAttribute("aria-pressed", String(!playing));
+        toggleIcon.textContent = playing ? "⏸" : "▶";
+        toggleText.textContent = playing ? "暂停" : "继续";
+        if (playing && targetSpeed === 0) {
+          setSpeed(1.0);
+        }
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        setPlaying(!isPlaying);
+      });
+
+      speedSlider.addEventListener("input", (e) => {
+        setSpeed(parseFloat(e.target.value));
+      });
+
+      presetBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const s = parseFloat(btn.dataset.speed);
+          setSpeed(s);
+          if (!isPlaying) setPlaying(true);
+        });
+      });
+
+      bellBtn.addEventListener("click", triggerBell);
+
+      // Keyboard shortcuts
+      window.addEventListener("keydown", (e) => {
+        if (e.target && e.target.tagName === "INPUT") return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          setPlaying(!isPlaying);
+        } else if (e.code === "ArrowRight") {
+          e.preventDefault();
+          setSpeed(targetSpeed + 0.2);
+        } else if (e.code === "ArrowLeft") {
+          e.preventDefault();
+          setSpeed(targetSpeed - 0.2);
+        } else if (e.key === "b" || e.key === "B") {
+          triggerBell();
+        }
+      });
+
+      // Kick off animation
+      renderFrame();
+      requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>
